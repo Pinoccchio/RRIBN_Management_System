@@ -52,11 +52,8 @@ export const Navbar: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm" href="/signin">
+            <Button variant="primary" size="sm" href="/signin">
               SIGN IN
-            </Button>
-            <Button variant="primary" size="sm" href="/register">
-              REGISTER
             </Button>
           </div>
 
@@ -99,11 +96,8 @@ export const Navbar: React.FC = () => {
                 </a>
               ))}
               <div className="flex flex-col space-y-2 pt-4">
-                <Button variant="outline" size="sm" href="/signin">
+                <Button variant="primary" size="sm" href="/signin">
                   SIGN IN
-                </Button>
-                <Button variant="primary" size="sm" href="/register">
-                  REGISTER
                 </Button>
               </div>
             </div>
