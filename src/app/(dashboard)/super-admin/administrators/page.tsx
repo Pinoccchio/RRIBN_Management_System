@@ -5,14 +5,17 @@ import { PageHeader } from '@/components/dashboard/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Select } from '@/components/ui/Select';
+import { Card, CardContent } from '@/components/ui/Card';
 import { AdministratorTable } from '@/components/dashboard/administrators/AdministratorTable';
 import { CreateAdministratorModal } from '@/components/dashboard/administrators/CreateAdministratorModal';
 import { EditAdministratorModal } from '@/components/dashboard/administrators/EditAdministratorModal';
+import { ViewAdministratorModal } from '@/components/dashboard/administrators/ViewAdministratorModal';
+import { DeleteAdministratorModal } from '@/components/dashboard/administrators/DeleteAdministratorModal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Toast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Administrator, AdministratorFilters, PaginatedResponse } from '@/lib/types/administrator';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, UserPlus } from 'lucide-react';
 
 export default function AdministratorsPage() {
   const { user } = useAuth();
@@ -25,7 +28,10 @@ export default function AdministratorsPage() {
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<Administrator | null>(null);
+  const [deletingAdmin, setDeletingAdmin] = useState(false);
 
   // Filters
   const [filters, setFilters] = useState<AdministratorFilters>({
@@ -74,10 +80,10 @@ export default function AdministratorsPage() {
   }, [currentPage, filters]);
 
   // Handle create success
-  const handleCreateSuccess = (password: string) => {
+  const handleCreateSuccess = () => {
     setShowCreateModal(false);
     setToast({
-      message: `Administrator created successfully! Temporary password: ${password}`,
+      message: 'Administrator created successfully!',
       type: 'success',
     });
     fetchAdministrators();
@@ -99,41 +105,51 @@ export default function AdministratorsPage() {
     fetchAdministrators();
   };
 
-  // Handle delete
-  const handleDelete = async (admin: Administrator) => {
-    if (!confirm(`Are you sure you want to deactivate ${admin.profile.first_name} ${admin.profile.last_name}? This action can be reversed later.`)) {
-      return;
-    }
+  // Handle delete - Open modal
+  const handleDelete = (admin: Administrator) => {
+    setSelectedAdmin(admin);
+    setShowDeleteModal(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!selectedAdmin) return;
+
+    setDeletingAdmin(true);
 
     try {
-      const response = await fetch(`/api/admin/administrators/${admin.id}`, {
+      const response = await fetch(`/api/admin/administrators/${selectedAdmin.id}`, {
         method: 'DELETE',
       });
 
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to deactivate administrator');
+        throw new Error(result.error || 'Failed to delete administrator');
       }
 
       setToast({
-        message: 'Administrator deactivated successfully',
+        message: 'Administrator deleted successfully',
         type: 'success',
       });
+      setShowDeleteModal(false);
+      setSelectedAdmin(null);
       fetchAdministrators();
     } catch (err) {
-      console.error('Error deactivating administrator:', err);
+      console.error('Error deleting administrator:', err);
       setToast({
-        message: err instanceof Error ? err.message : 'Failed to deactivate administrator',
+        message: err instanceof Error ? err.message : 'Failed to delete administrator',
         type: 'error',
       });
+    } finally {
+      setDeletingAdmin(false);
     }
   };
 
-  // Handle view (placeholder)
+  // Handle view
   const handleView = (admin: Administrator) => {
-    // TODO: Implement view details modal or navigate to detail page
-    console.log('View admin:', admin);
+    setSelectedAdmin(admin);
+    setShowViewModal(true);
   };
 
   return (
@@ -142,8 +158,13 @@ export default function AdministratorsPage() {
         title="Administrators"
         description="Manage administrator accounts and permissions across the system."
         action={
-          <Button variant="primary" size="md" onClick={() => setShowCreateModal(true)}>
-            + Create Administrator
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setShowCreateModal(true)}
+            leftIcon={<UserPlus className="w-5 h-5" />}
+          >
+            Create Administrator
           </Button>
         }
         breadcrumbs={[
@@ -152,8 +173,8 @@ export default function AdministratorsPage() {
         ]}
       />
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+      {/* Filters Card */}
+      <Card variant="elevated" padding="lg" className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="md:col-span-2">
@@ -201,64 +222,80 @@ export default function AdministratorsPage() {
         {/* Refresh Button */}
         <div className="mt-4 flex justify-end">
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
             onClick={fetchAdministrators}
             disabled={loading}
+            leftIcon={<RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
-          <p className="font-medium">Error loading administrators</p>
-          <p className="text-sm mt-1">{error}</p>
-        </div>
+        <Card variant="bordered" padding="md" className="mb-6 border-error bg-error-light">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-error flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="font-semibold text-error-dark">Error loading administrators</p>
+              <p className="text-sm mt-1 text-error">{error}</p>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Loading State */}
       {loading && !administrators.length ? (
-        <div className="flex justify-center items-center py-12">
-          <LoadingSpinner size="lg" />
-        </div>
+        <Card variant="elevated" padding="lg" className="mb-6">
+          <div className="flex justify-center items-center py-12">
+            <LoadingSpinner size="lg" />
+          </div>
+        </Card>
       ) : (
         <>
           {/* Table */}
-          <AdministratorTable
-            administrators={administrators}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onView={handleView}
-            currentUserId={user?.id}
-          />
+          <Card variant="elevated" padding="none" className="mb-6 overflow-hidden">
+            <AdministratorTable
+              administrators={administrators}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onView={handleView}
+              currentUserId={user?.id}
+            />
+          </Card>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-6 flex justify-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1 || loading}
-              >
-                Previous
-              </Button>
-              <span className="px-4 py-2 text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages || loading}
-              >
-                Next
-              </Button>
-            </div>
+            <Card variant="bordered" padding="md" className="bg-gray-50">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Showing page <span className="font-semibold text-navy-900">{currentPage}</span> of{' '}
+                  <span className="font-semibold text-navy-900">{totalPages}</span>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1 || loading}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || loading}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </Card>
           )}
         </>
       )}
@@ -270,11 +307,31 @@ export default function AdministratorsPage() {
         onSuccess={handleCreateSuccess}
       />
 
+      <ViewAdministratorModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedAdmin(null);
+        }}
+        administrator={selectedAdmin}
+      />
+
       <EditAdministratorModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         onSuccess={handleEditSuccess}
         administrator={selectedAdmin}
+      />
+
+      <DeleteAdministratorModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedAdmin(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        administrator={selectedAdmin}
+        loading={deletingAdmin}
       />
 
       {/* Toast */}

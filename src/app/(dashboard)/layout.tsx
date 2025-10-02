@@ -39,11 +39,15 @@ export default function DashboardLayout({
   const dashboardUser = user && user.profile ? {
     id: user.id,
     name: `${user.profile.first_name} ${user.profile.last_name}`,
+    firstName: user.profile.first_name,
+    lastName: user.profile.last_name,
     email: user.email || '',
     role: role,
   } : loading ? {
     id: 'loading',
     name: 'Loading...',
+    firstName: 'Loading',
+    lastName: '',
     email: 'Loading...',
     role: role,
   } : undefined;
@@ -61,7 +65,12 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className={`transition-all duration-300 ${isCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
         {/* Header */}
-        <DashboardHeader user={dashboardUser} onSignOut={handleSignOut} />
+        <DashboardHeader
+          user={dashboardUser}
+          onSignOut={handleSignOut}
+          isCollapsed={isCollapsed}
+          onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
+        />
 
         {/* Page Content */}
         <main className="p-6">

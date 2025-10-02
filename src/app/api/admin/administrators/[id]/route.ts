@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { isValidUUID, sanitizeInput } from '@/lib/utils/validation';
 import type { Administrator, UpdateAdministratorInput } from '@/lib/types/administrator';
 
@@ -178,7 +179,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/admin/administrators/[id]
- * Deactivate an administrator (soft delete)
+ * Permanently delete an administrator (hard delete from Auth and Database)
  */
 export async function DELETE(
   request: NextRequest,
@@ -205,30 +206,52 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    // Prevent self-deactivation
+    // Prevent self-deletion
     if (id === user.id) {
-      return NextResponse.json({ success: false, error: 'Cannot deactivate your own account' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Cannot delete your own account' }, { status: 400 });
     }
 
-    // Deactivate administrator by setting status to 'deactivated'
-    const { error: updateError } = await supabase.rpc('update_admin_account', {
-      p_account_id: id,
-      p_first_name: null,
-      p_last_name: null,
-      p_phone: null,
-      p_role: null,
-      p_status: 'deactivated',
-      p_updated_by: user.id,
-    });
+    // Step 1: Get administrator details for logging (optional - before deletion)
+    const { data: admin } = await supabase
+      .from('admin_accounts_with_details')
+      .select('email, profile:profiles(first_name, last_name)')
+      .eq('id', id)
+      .single();
 
-    if (updateError) {
-      console.error('Error deactivating administrator:', updateError);
-      return NextResponse.json({ success: false, error: 'Failed to deactivate administrator' }, { status: 500 });
+    if (!admin) {
+      return NextResponse.json({ success: false, error: 'Administrator not found' }, { status: 404 });
+    }
+
+    // Step 2: Delete from Supabase Auth using service role key
+    const adminClient = createAdminClient();
+    const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(id);
+
+    if (authDeleteError) {
+      console.error('Error deleting administrator from Auth:', authDeleteError);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to delete administrator from authentication system'
+      }, { status: 500 });
+    }
+
+    // Step 3: Delete from database (CASCADE will handle profiles and staff_details)
+    const { error: dbDeleteError } = await supabase
+      .from('accounts')
+      .delete()
+      .eq('id', id);
+
+    if (dbDeleteError) {
+      console.error('Error deleting administrator from database:', dbDeleteError);
+      // Note: Auth user is already deleted at this point
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to delete administrator from database'
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Administrator deactivated successfully'
+      message: 'Administrator deleted successfully'
     });
   } catch (error) {
     console.error('Error in DELETE /api/admin/administrators/[id]:', error);

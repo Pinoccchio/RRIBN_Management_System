@@ -76,7 +76,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-yellow-500/20">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-yellow-500/20">
             {!isCollapsed && (
               <div className="flex items-center space-x-3">
                 <Image

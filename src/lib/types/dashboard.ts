@@ -5,6 +5,8 @@ export type UserRole = 'super-admin' | 'admin' | 'staff' | 'reservist';
 export interface DashboardUser {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   role: UserRole;
   avatar?: string;

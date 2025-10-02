@@ -39,7 +39,7 @@ export interface CreateAdministratorInput {
   lastName: string;
   phone?: string;
   status?: AccountStatus;
-  sendInvitation?: boolean;
+  password: string;
 }
 
 // Form data for updating administrator
@@ -61,7 +61,6 @@ export interface ApiResponse<T = unknown> {
 
 export interface CreateAdministratorResponse {
   administrator: Administrator;
-  temporaryPassword: string;
 }
 
 // Filter and pagination types

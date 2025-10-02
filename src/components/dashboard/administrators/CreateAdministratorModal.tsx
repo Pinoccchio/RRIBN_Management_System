@@ -12,7 +12,7 @@ import type { CreateAdministratorInput } from '@/lib/types/administrator';
 interface CreateAdministratorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (password: string) => void;
+  onSuccess: () => void;
 }
 
 export function CreateAdministratorModal({
@@ -27,11 +27,12 @@ export function CreateAdministratorModal({
     lastName: '',
     phone: '',
     status: 'active',
+    password: '',
   });
 
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -48,6 +49,14 @@ export function CreateAdministratorModal({
 
     if (!formData.lastName || formData.lastName.trim().length < 2) {
       newErrors.lastName = 'Last name must be at least 2 characters';
+    }
+
+    if (!formData.password || formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+
+    if (formData.password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -81,8 +90,9 @@ export function CreateAdministratorModal({
         return;
       }
 
-      // Show the temporary password
-      setTempPassword(result.data.temporaryPassword);
+      // Success - close modal and refresh
+      onSuccess();
+      handleClose();
     } catch (error) {
       console.error('Error creating administrator:', error);
       setErrors({ submit: 'An unexpected error occurred' });
@@ -91,9 +101,6 @@ export function CreateAdministratorModal({
   };
 
   const handleClose = () => {
-    if (tempPassword) {
-      onSuccess(tempPassword);
-    }
     setFormData({
       email: '',
       role: 'admin',
@@ -101,58 +108,13 @@ export function CreateAdministratorModal({
       lastName: '',
       phone: '',
       status: 'active',
+      password: '',
     });
+    setConfirmPassword('');
     setErrors({});
-    setTempPassword(null);
     setIsSubmitting(false);
     onClose();
   };
-
-  // If password was generated, show success screen
-  if (tempPassword) {
-    return (
-      <Modal
-        isOpen={isOpen}
-        onClose={handleClose}
-        title="Administrator Created Successfully"
-        size="md"
-        showCloseButton={false}
-      >
-        <div className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-800 font-medium mb-2">
-              Administrator account has been created successfully!
-            </p>
-            <p className="text-sm text-green-700">
-              The account for <strong>{formData.email}</strong> is now {formData.status}.
-            </p>
-          </div>
-
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm font-medium text-yellow-900 mb-2">
-              Temporary Password
-            </p>
-            <div className="bg-white border border-yellow-300 rounded p-3 font-mono text-sm break-all">
-              {tempPassword}
-            </div>
-            <p className="text-xs text-yellow-700 mt-2">
-              ⚠️ Please save this password securely. It will only be shown once.
-            </p>
-          </div>
-
-          <p className="text-sm text-gray-600">
-            The administrator should change their password upon first login.
-          </p>
-        </div>
-
-        <ModalFooter>
-          <Button variant="primary" onClick={handleClose}>
-            Done
-          </Button>
-        </ModalFooter>
-      </Modal>
-    );
-  }
 
   return (
     <Modal
@@ -232,6 +194,37 @@ export function CreateAdministratorModal({
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             placeholder="+639XXXXXXXXX"
             error={errors.phone}
+            disabled={isSubmitting}
+          />
+        </div>
+
+        {/* Password */}
+        <div>
+          <Label htmlFor="password">Password *</Label>
+          <Input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            placeholder="Enter password (min 8 characters)"
+            error={errors.password}
+            disabled={isSubmitting}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Password will be used by the administrator to log in. They can change it later.
+          </p>
+        </div>
+
+        {/* Confirm Password */}
+        <div>
+          <Label htmlFor="confirmPassword">Confirm Password *</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Re-enter password"
+            error={errors.confirmPassword}
             disabled={isSubmitting}
           />
         </div>

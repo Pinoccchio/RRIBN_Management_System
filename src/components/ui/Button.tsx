@@ -5,7 +5,7 @@ import { LoadingSpinner } from './LoadingSpinner';
 
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   onClick?: () => void;
@@ -35,10 +35,12 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = 'inline-flex items-center justify-center gap-2 font-semibold transition-all duration-300 rounded-lg focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none';
 
   const variantStyles = {
-    primary: 'bg-yellow-500 hover:bg-yellow-600 text-navy-900 shadow-lg hover:shadow-xl focus:ring-yellow-500/30 active:scale-95',
-    secondary: 'bg-navy-800 hover:bg-navy-700 text-white shadow-lg hover:shadow-xl focus:ring-navy-500/30 active:scale-95',
+    primary: 'bg-yellow-500 hover:bg-yellow-600 text-navy-900 shadow-military hover:shadow-military-lg focus:ring-yellow-500/30 active:scale-95',
+    secondary: 'bg-navy-800 hover:bg-navy-700 text-white shadow-military hover:shadow-military-lg focus:ring-navy-500/30 active:scale-95',
     outline: 'border-2 border-yellow-500 text-yellow-600 hover:bg-yellow-50 focus:ring-yellow-500/30 active:scale-95',
     ghost: 'text-navy-900 hover:bg-gray-100 focus:ring-gray-300/30 active:scale-95',
+    danger: 'bg-error hover:bg-error-dark text-white shadow-military hover:shadow-military-lg focus:ring-error/30 active:scale-95',
+    success: 'bg-success hover:bg-success-dark text-white shadow-military hover:shadow-military-lg focus:ring-success/30 active:scale-95',
   };
 
   const sizeStyles = {

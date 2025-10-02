@@ -2,23 +2,39 @@
 
 /* Tailwind CSS v4 Theme Configuration */
 @theme {
-  /* Navy/Dark Blue Colors - Primary */
-  --color-navy-950: #071423;
-  --color-navy-900: #0B2238;
-  --color-navy-800: #0F2F47;
-  --color-navy-700: #1A3E5C;
-  --color-navy-600: #254D71;
+  /* Navy/Dark Blue Colors - Primary (Design System Enhanced) */
+  --color-navy-950: #050B14;
+  --color-navy-900: #0A1628;
+  --color-navy-800: #1a2332;
+  --color-navy-700: #2a3342;
+  --color-navy-600: #3a4352;
 
-  /* Yellow/Gold Colors - Accent */
-  --color-yellow-400: #F7C76B;
-  --color-yellow-500: #F4B942;
-  --color-yellow-600: #E0A82E;
-  --color-yellow-700: #C79419;
+  /* Yellow/Gold Colors - Accent (Design System Enhanced) */
+  --color-yellow-600: #D97706;
+  --color-yellow-500: #F59E0B;
+  --color-yellow-400: #FBBF24;
+  --color-yellow-300: #FCD34D;
+  --color-yellow-200: #FDE68A;
 
-  /* Red Colors - Highlight */
-  --color-red-500: #D63030;
-  --color-red-600: #C22020;
-  --color-red-700: #A81818;
+  /* Semantic Colors - Success */
+  --color-success-light: #D1FAE5;
+  --color-success: #10B981;
+  --color-success-dark: #047857;
+
+  /* Semantic Colors - Warning */
+  --color-warning-light: #FEF3C7;
+  --color-warning: #F59E0B;
+  --color-warning-dark: #D97706;
+
+  /* Semantic Colors - Error */
+  --color-error-light: #FEE2E2;
+  --color-error: #EF4444;
+  --color-error-dark: #DC2626;
+
+  /* Semantic Colors - Info */
+  --color-info-light: #DBEAFE;
+  --color-info: #3B82F6;
+  --color-info-dark: #2563EB;
 
   /* Gray Colors - Extended */
   --color-gray-50: #F9FAFB;
@@ -31,6 +47,13 @@
   --color-gray-700: #374151;
   --color-gray-800: #1F2937;
   --color-gray-900: #111827;
+
+  /* Custom Shadows - Military Theme */
+  --shadow-military: 0 4px 12px rgb(10 22 40 / 0.15);
+  --shadow-military-lg: 0 8px 24px rgb(10 22 40 / 0.2);
+  --shadow-military-inner: inset 0 2px 4px 0 rgb(10 22 40 / 0.06);
+  --shadow-yellow-glow: 0 0 20px rgb(245 158 11 / 0.3);
+  --shadow-yellow-glow-lg: 0 0 40px rgb(245 158 11 / 0.4);
 }
 
 /* Global Styles - Using @layer base for proper specificity */
@@ -56,33 +79,87 @@
 
 /* Custom Utilities */
 @layer utilities {
+  /* Military Shadow Utilities */
+  .shadow-military {
+    box-shadow: 0 4px 12px rgb(10 22 40 / 0.15);
+  }
+
+  .shadow-military-lg {
+    box-shadow: 0 8px 24px rgb(10 22 40 / 0.2);
+  }
+
+  .shadow-military-inner {
+    box-shadow: inset 0 2px 4px 0 rgb(10 22 40 / 0.06);
+  }
+
+  .shadow-yellow-glow {
+    box-shadow: 0 0 20px rgb(245 158 11 / 0.3);
+  }
+
+  .shadow-yellow-glow-lg {
+    box-shadow: 0 0 40px rgb(245 158 11 / 0.4);
+  }
+
+  /* Gradient Background Utilities */
+  .bg-gradient-navy-subtle {
+    background: linear-gradient(135deg, #0A1628 0%, #1a2332 100%);
+  }
+
+  .bg-gradient-navy-deep {
+    background: linear-gradient(135deg, #050B14 0%, #0A1628 100%);
+  }
+
+  .bg-gradient-yellow-warm {
+    background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
+  }
+
+  .bg-gradient-yellow-gold {
+    background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+  }
+
+  .bg-gradient-military-command {
+    background: linear-gradient(135deg, #0A1628 0%, #1a2332 50%, #2a3342 100%);
+  }
+
+  .bg-gradient-military-accent {
+    background: linear-gradient(90deg, #F59E0B 0%, #FBBF24 100%);
+  }
+
+  .bg-gradient-subtle {
+    background: linear-gradient(to bottom right, #F9FAFB 0%, #FFFFFF 50%, #F3F4F6 100%);
+  }
+
+  .bg-gradient-navy-overlay {
+    background: linear-gradient(to bottom, rgba(10, 22, 40, 0.4) 0%, rgba(10, 22, 40, 0.5) 50%, rgba(10, 22, 40, 0.6) 100%);
+  }
+
   /* Custom Scrollbar */
   ::-webkit-scrollbar {
     width: 10px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #0B2238;
+    background: #0A1628;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #F4B942;
+    background: #F59E0B;
     border-radius: 5px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #E0A82E;
+    background: #D97706;
   }
 
   /* Selection */
   ::selection {
-    background-color: #F4B942;
-    color: #0B2238;
+    background-color: #F59E0B;
+    color: #0A1628;
   }
 
   ::-moz-selection {
-    background-color: #F4B942;
-    color: #0B2238;
+    background-color: #F59E0B;
+    color: #0A1628;
   }
 
   /* Modern Animations */

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient, generateSecurePassword } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { isValidEmail, sanitizeInput } from '@/lib/utils/validation';
 import type { CreateAdministratorInput, Administrator, PaginatedResponse, AdministratorFilters } from '@/lib/types/administrator';
 
@@ -133,10 +133,10 @@ export async function POST(request: NextRequest) {
     const body: CreateAdministratorInput = await request.json();
 
     // Validate required fields
-    if (!body.email || !body.firstName || !body.lastName || !body.role) {
+    if (!body.email || !body.firstName || !body.lastName || !body.role || !body.password) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required fields: email, firstName, lastName, role'
+        error: 'Missing required fields: email, firstName, lastName, role, password'
       }, { status: 400 });
     }
 
@@ -151,6 +151,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid role. Must be admin or super_admin' }, { status: 400 });
     }
 
+    // Validate password
+    if (body.password.length < 8) {
+      return NextResponse.json({ success: false, error: 'Password must be at least 8 characters' }, { status: 400 });
+    }
+
     // Check if email already exists
     const { data: existingAccount } = await supabase
       .from('accounts')
@@ -162,13 +167,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 409 });
     }
 
-    // Generate secure password
-    const temporaryPassword = generateSecurePassword();
-
     // Create Supabase Auth user (using admin client to bypass email confirmation)
     const { data: authData, error: authUserError } = await adminClient.auth.admin.createUser({
       email,
-      password: temporaryPassword,
+      password: body.password,
       email_confirm: true, // Auto-confirm email
       user_metadata: {
         first_name: sanitizeInput(body.firstName),
@@ -236,14 +238,10 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // TODO: Send invitation email with temporary password
-    // This would be implemented with your email service (e.g., SendGrid, Resend, etc.)
-
     return NextResponse.json({
       success: true,
       data: {
         administrator,
-        temporaryPassword,
       },
       message: 'Administrator account created successfully',
     }, { status: 201 });
