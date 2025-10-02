@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { Container } from './ui/Container';
 
 const aboutImages = [
@@ -41,16 +40,17 @@ export const Mission: React.FC = () => {
           {/* Left: Image Carousel */}
           <div className="relative h-96 lg:h-[500px] rounded-lg overflow-hidden shadow-xl">
             {aboutImages.map((image, index) => (
-              <Image
+              <div
                 key={image}
-                src={image}
-                alt="301st RRIBn Training"
-                fill
-                className={`object-cover transition-opacity duration-1000 ${
+                className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
                   index === currentImageIndex ? 'opacity-100' : 'opacity-0'
                 }`}
+                style={{
+                  backgroundImage: `url(${image})`,
+                }}
               />
             ))}
+            <div className="absolute inset-0 bg-gradient-to-b from-navy-900/20 via-transparent to-navy-900/20"></div>
           </div>
 
           {/* Right: Content */}
