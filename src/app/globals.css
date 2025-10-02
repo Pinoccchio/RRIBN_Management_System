@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Tailwind CSS v4 Theme Configuration */
+@theme {
+  /* Navy/Dark Blue Colors - Primary */
+  --color-navy-950: #071423;
+  --color-navy-900: #0B2238;
+  --color-navy-800: #0F2F47;
+  --color-navy-700: #1A3E5C;
+  --color-navy-600: #254D71;
+
+  /* Yellow/Gold Colors - Accent */
+  --color-yellow-400: #F7C76B;
+  --color-yellow-500: #F4B942;
+  --color-yellow-600: #E0A82E;
+  --color-yellow-700: #C79419;
+
+  /* Red Colors - Highlight */
+  --color-red-500: #D63030;
+  --color-red-600: #C22020;
+  --color-red-700: #A81818;
+
+  /* Gray Colors - Extended */
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E5E7EB;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7280;
+  --color-gray-600: #4B5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Global Styles - Using @layer base for proper specificity */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom Utilities */
+@layer utilities {
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0B2238;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #F4B942;
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #E0A82E;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: #F4B942;
+    color: #0B2238;
+  }
+
+  ::-moz-selection {
+    background-color: #F4B942;
+    color: #0B2238;
+  }
+}
+
+/* Smooth transitions */
+@layer components {
+  a,
+  button {
+    transition: all 0.3s ease;
+  }
 }

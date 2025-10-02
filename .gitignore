@@ -39,3 +39,22 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Windows reserved names (cannot be committed)
+nul
+con
+prn
+aux
+com1
+com2
+com3
+com4
+lpt1
+lpt2
+lpt3
+lpt4
+
+# Screenshot and test images
+image.png
+image*.png
+screenshot*.png
