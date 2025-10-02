@@ -2,10 +2,16 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export const SignInForm: React.FC = () => {
+  const router = useRouter();
+  const { signIn } = useAuth();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -15,6 +21,7 @@ export const SignInForm: React.FC = () => {
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
+    general?: string;
   }>({});
 
   const [isLoading, setIsLoading] = useState(false);
@@ -40,34 +47,68 @@ export const SignInForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    logger.info('Sign in form submitted', { email: formData.email });
+
     // Validation
     const newErrors: typeof errors = {};
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
+      logger.warn('Validation failed: Email is required');
     } else if (!validateEmail(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
+      logger.warn('Validation failed: Invalid email format', { email: formData.email });
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
+      logger.warn('Validation failed: Password is required');
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
+      logger.warn('Validation failed: Password too short');
     }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      logger.error('Form validation failed', null, {
+        email: formData.email,
+        data: { errorCount: Object.keys(newErrors).length }
+      });
       return;
     }
 
+    logger.info('Form validation passed', { email: formData.email });
     setIsLoading(true);
+    setErrors({});
 
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Sign in submitted:', formData);
+    try {
+      const { error } = await signIn(formData.email, formData.password);
+
+      if (error) {
+        logger.error('Sign in returned error', error, { email: formData.email });
+        setErrors({
+          general: error.message || 'Invalid email or password. Please try again.',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Successfully signed in - middleware will handle role-based redirect
+      logger.success('Sign in successful - Middleware will redirect to role-based dashboard', { email: formData.email });
+
+      // Small delay to allow middleware to process
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Trigger navigation (middleware will redirect to appropriate dashboard)
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      logger.error('Unexpected error during sign in', error, { email: formData.email });
+      setErrors({
+        general: 'An unexpected error occurred. Please try again.',
+      });
       setIsLoading(false);
-      // TODO: Implement actual authentication logic
-    }, 2000);
+    }
   };
 
   return (
@@ -80,6 +121,16 @@ export const SignInForm: React.FC = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* General Error Message */}
+        {errors.general && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
+            <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <span className="text-sm">{errors.general}</span>
+          </div>
+        )}
+
         {/* Email Input */}
         <Input
           type="email"
