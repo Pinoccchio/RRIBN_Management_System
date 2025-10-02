@@ -23,7 +23,10 @@ export const Hero: React.FC = () => {
   }, []);
 
   return (
-    <section id="home" className="relative min-h-screen flex items-start justify-start pt-20">
+    <section id="home" className="relative min-h-screen flex flex-col pt-20">
+      {/* Top Yellow Border */}
+      <div className="absolute top-20 left-0 right-0 h-0.5 bg-yellow-500 z-20"></div>
+
       {/* Background Image Carousel with Lighter Overlay */}
       <div className="absolute inset-0 z-0">
         {heroImages.map((image, index) => (
@@ -41,54 +44,35 @@ export const Hero: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 w-full pl-8 md:pl-12 lg:pl-16 xl:pl-20 pr-8">
-        <div className="py-20 max-w-3xl">
-          {/* Text Content */}
-          <div className="space-y-8">
-            {/* Administrative Portal Label with Double Yellow Borders */}
-            <div>
-              <div className="border-t-2 border-yellow-500 w-32 mb-3"></div>
-              <div className="text-yellow-500 text-sm font-bold tracking-widest">
+      <div className="relative z-10 flex-1 flex items-center">
+        <div className="w-full pl-8 md:pl-12 lg:pl-16 xl:pl-20 pr-8">
+          <div className="max-w-3xl">
+            {/* Text Content */}
+            <div className="space-y-6">
+              {/* Administrative Portal Label */}
+              <div className="text-yellow-500 text-xs md:text-sm font-bold tracking-widest">
                 ADMINISTRATIVE PORTAL
               </div>
-              <div className="border-b-2 border-yellow-500 w-32 mt-3"></div>
-            </div>
 
-            {/* Main Heading */}
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              301st READY<br />
-              RESERVE INFANTRY<br />
-              BATTALION
-            </h1>
+              {/* Main Heading */}
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
+                301st READY<br />
+                RESERVE INFANTRY<br />
+                BATTALION
+              </h1>
 
-            {/* Subtitle */}
-            <p className="text-base md:text-lg text-gray-200 max-w-2xl leading-relaxed">
-              Personnel Management System for administrators and staff members of the 301st
-              Ready Reserve Infantry Battalion.
-            </p>
-
-            {/* Scroll Indicator */}
-            <div className="pt-8">
-              <div className="inline-flex flex-col items-center space-y-2 animate-bounce">
-                <div className="w-6 h-10 border-2 border-yellow-500 rounded-full flex items-start justify-center p-2">
-                  <div className="w-1 h-3 bg-yellow-500 rounded-full"></div>
-                </div>
-                <svg
-                  className="w-6 h-6 text-yellow-500"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                </svg>
-              </div>
+              {/* Subtitle */}
+              <p className="text-sm md:text-base text-gray-200 max-w-2xl leading-relaxed">
+                Personnel Management System for administrators and staff members of the 301st
+                Ready Reserve Infantry Battalion.
+              </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Bottom Yellow Border */}
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-yellow-500 z-20"></div>
     </section>
   );
 };
