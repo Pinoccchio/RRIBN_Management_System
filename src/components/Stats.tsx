@@ -32,11 +32,14 @@ export const Stats: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {stats.map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-500 mb-3">
+            <div
+              key={index}
+              className="text-center transition-all duration-300 hover:transform hover:-translate-y-2 hover:scale-105 cursor-pointer"
+            >
+              <div className="text-4xl md:text-5xl lg:text-6xl font-bold text-yellow-500 mb-3 transition-all duration-300">
                 {stat.value}
               </div>
-              <div className="text-xs md:text-sm font-semibold text-white tracking-wider">
+              <div className="text-xs md:text-sm font-semibold text-white tracking-wider transition-all duration-300">
                 {stat.label}
               </div>
             </div>

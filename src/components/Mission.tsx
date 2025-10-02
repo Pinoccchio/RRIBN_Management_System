@@ -1,8 +1,27 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Container } from './ui/Container';
 
+const aboutImages = [
+  '/images/hero/53bb92d2-ca6d-4179-bff5-250142b5f437.jpg',
+  '/images/hero/bece77fb-df31-443c-93a4-8010c14d4f73.jpg',
+  '/images/hero/d308b8c7-3069-45ee-a7f9-bdd2cf5dd0f2.jpg',
+  '/images/hero/daf3f2cd-e46a-4a22-b6d0-b952bc856e5f.jpg',
+];
+
 export const Mission: React.FC = () => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % aboutImages.length);
+    }, 5000); // Change image every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section id="about" className="py-20 bg-gray-50">
       <Container maxWidth="xl">
@@ -19,14 +38,19 @@ export const Mission: React.FC = () => {
 
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left: Image */}
+          {/* Left: Image Carousel */}
           <div className="relative h-96 lg:h-[500px] rounded-lg overflow-hidden shadow-xl">
-            <Image
-              src="/images/hero/53bb92d2-ca6d-4179-bff5-250142b5f437.jpg"
-              alt="301st RRIBn Training"
-              fill
-              className="object-cover"
-            />
+            {aboutImages.map((image, index) => (
+              <Image
+                key={image}
+                src={image}
+                alt="301st RRIBn Training"
+                fill
+                className={`object-cover transition-opacity duration-1000 ${
+                  index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+            ))}
           </div>
 
           {/* Right: Content */}
