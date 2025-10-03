@@ -136,8 +136,11 @@ export default function CompaniesPage() {
           { label: 'Companies' },
         ]}
         action={
-          <Button onClick={() => setIsCreateModalOpen(true)} size="md">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            size="md"
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
             Create Company
           </Button>
         }
@@ -171,16 +174,16 @@ export default function CompaniesPage() {
               variant={filterStatus === 'active' ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => setFilterStatus('active')}
+              leftIcon={<CheckCircle className="w-4 h-4" />}
             >
-              <CheckCircle className="w-4 h-4 mr-2" />
               Active
             </Button>
             <Button
               variant={filterStatus === 'inactive' ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => setFilterStatus('inactive')}
+              leftIcon={<XCircle className="w-4 h-4" />}
             >
-              <XCircle className="w-4 h-4 mr-2" />
               Inactive
             </Button>
           </div>

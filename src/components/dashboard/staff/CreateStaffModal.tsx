@@ -286,9 +286,10 @@ export function CreateStaffModal({
               value={formData.status}
               onChange={(value) => setFormData({ ...formData, status: value as any })}
               options={[
-                { value: 'active', label: 'Active' },
                 { value: 'pending', label: 'Pending' },
+                { value: 'active', label: 'Active' },
                 { value: 'inactive', label: 'Inactive' },
+                { value: 'deactivated', label: 'Deactivated' },
               ]}
               disabled={isSubmitting}
             />

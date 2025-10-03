@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/dashboard/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Toast } from '@/components/ui/Toast';
 import { StaffTable } from '@/components/dashboard/staff/StaffTable';
 import { CreateStaffModal } from '@/components/dashboard/staff/CreateStaffModal';
 import { EditStaffModal } from '@/components/dashboard/staff/EditStaffModal';
@@ -29,6 +30,9 @@ export default function StaffPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -96,6 +100,36 @@ export default function StaffPage() {
     setIsDeleteModalOpen(true);
   };
 
+  // Success handlers with toast notifications
+  const handleCreateSuccess = () => {
+    setIsCreateModalOpen(false);
+    setToast({
+      message: 'Staff member created successfully!',
+      type: 'success',
+    });
+    fetchStaff();
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    setSelectedStaff(null);
+    setToast({
+      message: 'Staff member updated successfully!',
+      type: 'success',
+    });
+    fetchStaff();
+  };
+
+  const handleDeleteSuccess = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedStaff(null);
+    setToast({
+      message: 'Staff member deleted successfully',
+      type: 'success',
+    });
+    fetchStaff();
+  };
+
   return (
     <div>
       <PageHeader
@@ -106,8 +140,11 @@ export default function StaffPage() {
           { label: 'Staff' },
         ]}
         action={
-          <Button onClick={() => setIsCreateModalOpen(true)} size="md">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            size="md"
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
             Create Staff Account
           </Button>
         }
@@ -133,41 +170,46 @@ export default function StaffPage() {
           <div>
             <Select
               value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
+              onChange={(value) => {
+                setStatusFilter(value);
                 setPage(1);
               }}
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="pending">Pending</option>
-              <option value="deactivated">Deactivated</option>
-            </Select>
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'pending', label: 'Pending' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'deactivated', label: 'Deactivated' },
+              ]}
+            />
           </div>
 
           {/* Company Filter */}
           <div>
             <Select
               value={companyFilter}
-              onChange={(e) => {
-                setCompanyFilter(e.target.value);
+              onChange={(value) => {
+                setCompanyFilter(value);
                 setPage(1);
               }}
-            >
-              <option value="all">All Companies</option>
-              {companies.map((company) => (
-                <option key={company.code} value={company.code}>
-                  {company.name}
-                </option>
-              ))}
-            </Select>
+              options={[
+                { value: 'all', label: 'All Companies' },
+                ...companies.map((company) => ({
+                  value: company.code,
+                  label: company.name,
+                })),
+              ]}
+            />
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between">
-          <Button onClick={handleSearch} variant="primary" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
+          <Button
+            onClick={handleSearch}
+            variant="primary"
+            size="sm"
+            leftIcon={<Filter className="w-4 h-4" />}
+          >
             Apply Filters
           </Button>
 
@@ -236,7 +278,7 @@ export default function StaffPage() {
       <CreateStaffModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={fetchStaff}
+        onSuccess={handleCreateSuccess}
       />
 
       {selectedStaff && (
@@ -247,7 +289,7 @@ export default function StaffPage() {
               setIsEditModalOpen(false);
               setSelectedStaff(null);
             }}
-            onSuccess={fetchStaff}
+            onSuccess={handleEditSuccess}
             staff={selectedStaff}
           />
 
@@ -266,10 +308,19 @@ export default function StaffPage() {
               setIsDeleteModalOpen(false);
               setSelectedStaff(null);
             }}
-            onSuccess={fetchStaff}
+            onConfirm={handleDeleteSuccess}
             staff={selectedStaff}
           />
         </>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -14,7 +14,6 @@ interface DeleteStaffModalProps {
   onClose: () => void;
   onConfirm: () => void;
   staff: StaffMember | null;
-  loading?: boolean;
 }
 
 export function DeleteStaffModal({
@@ -22,22 +21,54 @@ export function DeleteStaffModal({
   onClose,
   onConfirm,
   staff,
-  loading = false,
 }: DeleteStaffModalProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!staff) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/staff/${staff.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to delete staff member');
+        setIsDeleting(false);
+        return;
+      }
+
+      // Success - call onConfirm to refresh list
+      onConfirm();
+      setIsDeleting(false);
+      onClose();
+    } catch (err) {
+      console.error('Error deleting staff member:', err);
+      setError('An unexpected error occurred');
+      setIsDeleting(false);
+    }
+  };
+
   // Handle Enter key to confirm
   useEffect(() => {
-    if (!isOpen || loading) return;
+    if (!isOpen || isDeleting) return;
 
     const handleEnter = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        onConfirm();
+        handleDelete();
       }
     };
 
     document.addEventListener('keydown', handleEnter);
     return () => document.removeEventListener('keydown', handleEnter);
-  }, [isOpen, loading, onConfirm]);
+  }, [isOpen, isDeleting, handleDelete]);
 
   if (!staff) {
     return null;
@@ -51,7 +82,7 @@ export function DeleteStaffModal({
       onClose={onClose}
       title="Delete Staff Member"
       size="md"
-      showCloseButton={!loading}
+      showCloseButton={!isDeleting}
     >
       <div className="space-y-6">
         {/* Warning Icon - Centered */}
@@ -115,6 +146,18 @@ export function DeleteStaffModal({
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
+              </div>
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Confirmation Question - Centered */}
         <div className="text-center text-gray-700 font-medium">
           Are you sure you want to permanently delete this staff member?
@@ -125,15 +168,15 @@ export function DeleteStaffModal({
         <Button
           variant="ghost"
           onClick={onClose}
-          disabled={loading}
+          disabled={isDeleting}
         >
           Cancel
         </Button>
         <Button
           variant="danger"
-          onClick={onConfirm}
-          loading={loading}
-          disabled={loading}
+          onClick={handleDelete}
+          loading={isDeleting}
+          disabled={isDeleting}
         >
           Delete Staff Member
         </Button>

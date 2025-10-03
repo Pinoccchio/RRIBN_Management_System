@@ -7,7 +7,7 @@ export type StaffDetails = Database['public']['Tables']['staff_details']['Row'];
 export type AccountStatus = Database['public']['Enums']['account_status'];
 
 // Company codes (kept for backwards compatibility)
-export type CompanyCode = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'HQ' | 'SIGNAL' | 'FAB';
+export type CompanyCode = 'ALPHA' | 'BRAVO' | 'CHARLIE' | 'DELTA' | 'HQ' | 'SIGNAL' | 'FAB';
 
 /**
  * @deprecated Use the Company interface and fetch companies dynamically from the database via /api/admin/companies
@@ -17,9 +17,10 @@ export const COMPANIES: { code: CompanyCode; name: string; color: string }[] = [
   { code: 'ALPHA', name: 'Alpha Company', color: 'blue' },
   { code: 'BRAVO', name: 'Bravo Company', color: 'green' },
   { code: 'CHARLIE', name: 'Charlie Company', color: 'purple' },
+  { code: 'DELTA', name: 'Delta Company', color: 'red' },
+  { code: 'FAB', name: 'FAB Company', color: 'orange' },
   { code: 'HQ', name: 'Headquarters', color: 'yellow' },
-  { code: 'SIGNAL', name: 'Signal Company', color: 'orange' },
-  { code: 'FAB', name: 'FAB Company', color: 'red' },
+  { code: 'SIGNAL', name: 'Signal Company', color: 'purple' },
 ];
 
 // Dynamic company types (fetched from database)

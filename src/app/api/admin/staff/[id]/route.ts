@@ -242,7 +242,7 @@ export async function DELETE(
     }
 
     // Step 3: Delete from database (CASCADE will handle profiles and staff_details)
-    const { error: dbDeleteError } = await supabase
+    const { error: dbDeleteError } = await adminClient
       .from('accounts')
       .delete()
       .eq('id', id);
