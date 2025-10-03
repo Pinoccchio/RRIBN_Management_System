@@ -12,7 +12,7 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
   title: string;
-  message: string;
+  message: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   variant?: ConfirmationVariant;
@@ -77,18 +77,18 @@ export function ConfirmationModal({
       size="sm"
       showCloseButton={!loading}
     >
-      <div className="space-y-4">
-        {/* Icon */}
+      <div className="space-y-6">
+        {/* Icon - Centered */}
         <div className="flex justify-center">
           <div className={`${config.iconBg} rounded-full p-3`}>
             <Icon className={`w-8 h-8 ${config.iconColor}`} />
           </div>
         </div>
 
-        {/* Message */}
-        <p className="text-center text-gray-700 leading-relaxed">
+        {/* Message - No forced alignment, content decides */}
+        <div className="text-gray-700 leading-relaxed">
           {message}
-        </p>
+        </div>
       </div>
 
       <ModalFooter className="mt-6">
