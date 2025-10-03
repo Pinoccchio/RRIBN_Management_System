@@ -72,17 +72,24 @@ export function MultiSelect({
       )}
 
       {/* Dropdown Trigger */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        aria-disabled={disabled}
         className={`
           w-full min-h-[42px] px-4 py-2 text-left
           bg-white border rounded-lg
           transition-all duration-200
           ${disabled
             ? 'bg-gray-100 cursor-not-allowed'
-            : 'hover:border-navy-500 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-transparent'
+            : 'hover:border-navy-500 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-transparent cursor-pointer'
           }
           ${error
             ? 'border-red-500'
@@ -121,7 +128,7 @@ export function MultiSelect({
             className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           />
         </div>
-      </button>
+      </div>
 
       {/* Dropdown Menu */}
       {isOpen && (

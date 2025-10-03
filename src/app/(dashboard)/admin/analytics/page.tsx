@@ -6,9 +6,9 @@ export default function AnalyticsPage() {
     <div>
       <PageHeader
         title="Analytics"
-        description="System-wide analytics and monitoring dashboard"
+        description="AI-powered promotion recommendations and insights"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/super-admin' },
+          { label: 'Dashboard', href: '/admin' },
           { label: 'Analytics' },
         ]}
       />
@@ -20,12 +20,12 @@ export default function AnalyticsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics Dashboard</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Prescriptive Analytics</h3>
           <p className="text-gray-600 mb-6">
-            This page will contain system-wide analytics including long-term trends, battalion-wide statistics, system performance tracking, and comprehensive monitoring tools.
+            AI-powered promotion recommendations, eligibility checks, cross-company comparisons, and data-driven insights for making promotion decisions across the battalion.
           </p>
           <div className="text-sm text-gray-500">
-            Coming soon: View system analytics and metrics
+            Coming soon: AI promotion analytics
           </div>
         </div>
       </div>

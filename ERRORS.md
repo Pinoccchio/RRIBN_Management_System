@@ -1,190 +1,110 @@
+
+
+1/3
+
+Next.js 15.5.4
+Turbopack
 Console Error
 
 
-In HTML, <div> cannot be a descendant of <p>.
-This will cause a hydration error.
+[2m   └─ Error Details:[0m "Invalid login credentials"
 
-See more info here: https://nextjs.org/docs/messages/react-hydration-error
-
-
-...
-    <InnerLayoutRouter url="/super-adm..." tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>
-      <SegmentViewNode type="page" pagePath="(dashboard...">
-        <SegmentTrieNode>
-        <ClientPageRoot Component={function StaffPage} searchParams={{}} params={{}}>
-          <StaffPage params={Promise} searchParams={Promise}>
-            <div>
-              <PageHeader>
-              <Card>
-              <Card>
-              <CreateStaffModal>
-              <ViewStaffModal>
-              <EditStaffModal>
-              <DeleteStaffModal isOpen={true} onClose={function onClose} onConfirm={function handleDeleteConfirm} ...>
-                <ConfirmationModal isOpen={true} onClose={function onClose} onConfirm={function handleDeleteConfirm} ...>
-                  <Modal isOpen={true} onClose={function onClose} title="Delete Sta..." size="sm" showCloseButton={true}>
-                    <div className="jsx-d287f3...">
-                      <div>
-                      <div className="jsx-d287f3...">
-                        <div className="jsx-d287f3...">
-                          <div>
-                          <div className="jsx-d287f3...">
-                            <div className="space-y-4">
-                              <div>
->                             <p className="text-center text-gray-700 leading-relaxed">
-                                <div className="space-y-4">
-                                  <div className="flex items...">
-                                    <Avatar firstName="Staff" lastName="User" src={null} size="lg">
-                                      <div className="relative i...">
->                                       <div
->                                         className="rounded-full flex items-center justify-center font-semibold overf..."
->                                         style={{backgroundColor:"#F59E0B"}}
->                                       >
-                                    ...
-                                  ...
-                            ...
-                      ...
-      ...
-src/components/ui/Avatar.tsx (41:7) @ Avatar
+src/lib/logger.ts (106:15) @ Logger.error
 
 
-  39 |   return (
-  40 |     <div className={cn('relative inline-block', className)}>
-> 41 |       <div
-     |       ^
-  42 |         className={cn(
-  43 |           'rounded-full flex items-center justify-center font-semibold overflow-hidden',
-  44 |           sizeClasses[size],
+  104 |     this.log('ERROR', message, options);
+  105 |     if (error && this.isDevelopment) {
+> 106 |       console.error(`${this.colors.DIM}   └─ Error Details:${this.colors.RESET}`, error);
+      |               ^
+  107 |     }
+  108 |   }
+  109 |
 Call Stack
-20
+7
 
-Show 16 ignore-listed frame(s)
-div
-<anonymous>
-Avatar
-src/components/ui/Avatar.tsx (41:7)
-DeleteStaffModal
-src/components/dashboard/staff/DeleteStaffModal.tsx (41:13)
-StaffPage
-src/app/(dashboard)/super-admin/staff/page.tsx (325:7)
-Console Error
+Show 3 ignore-listed frame(s)
+Logger.error
+src/lib/logger.ts (106:15)
+Logger.authError
+src/lib/logger.ts (142:10)Console AuthApiError
 
 
-<p> cannot contain a nested <div>.
-See this log for the ancestor stack trace.
+Invalid login credentials
 
-src/components/ui/ConfirmationModal.tsx (89:9) @ ConfirmationModal
+src/contexts/AuthContext.tsx (165:31) @ async signIn
 
 
-  87 |
-  88 |         {/* Message */}
-> 89 |         <p className="text-center text-gray-700 leading-relaxed">
-     |         ^
-  90 |           {message}
-  91 |         </p>
-  92 |       </div>
+  163 |
+  164 |     try {
+> 165 |       const { error, data } = await supabase.auth.signInWithPassword({
+      |                               ^
+  166 |         email,
+  167 |         password,
+  168 |       });
 Call Stack
-22
+6
 
-Show 18 ignore-listed frame(s)
-p
-<anonymous>
-ConfirmationModal
-src/components/ui/ConfirmationModal.tsx (89:9)
-DeleteStaffModal
-src/components/dashboard/staff/DeleteStaffModal.tsx (32:5)
-StaffPage
-src/app/(dashboard)/super-admin/staff/page.tsx (325:7)
-Console Error
-
-
-In HTML, <p> cannot be a descendant of <p>.
-This will cause a hydration error.
-
-See more info here: https://nextjs.org/docs/messages/react-hydration-error
+handleError
+file:///C:/Users/User/Documents/first_year_files/folder_for_jobs/ARMY/Capstone2_System_Documents/rribn_management_system/.next/static/chunks/node_modules_ab66c8b8._.js (7838:11)
+async _handleRequest
+file:///C:/Users/User/Documents/first_year_files/folder_for_jobs/ARMY/Capstone2_System_Documents/rribn_management_system/.next/static/chunks/node_modules_ab66c8b8._.js (7888:9)
+async _request
+file:///C:/Users/User/Documents/first_year_files/folder_for_jobs/ARMY/Capstone2_System_Documents/rribn_management_system/.next/static/chunks/node_modules_ab66c8b8._.js (7868:18)
+async SupabaseAuthClient.signInWithPassword
+file:///C:/Users/User/Documents/first_year_files/folder_for_jobs/ARMY/Capstone2_System_Documents/rribn_management_system/.next/static/chunks/node_modules_ab66c8b8._.js (8898:23)
+async signIn
+src/contexts/AuthContext.tsx (165:31)
+async handleSubmit
+src/components/auth/SignInForm.tsx (85:25)
+Runtime TypeError
 
 
-...
-    <InnerLayoutRouter url="/super-adm..." tree={[...]} cacheNode={{lazyData:null, ...}} segmentPath={[...]}>
-      <SegmentViewNode type="page" pagePath="(dashboard...">
-        <SegmentTrieNode>
-        <ClientPageRoot Component={function StaffPage} searchParams={{}} params={{}}>
-          <StaffPage params={Promise} searchParams={Promise}>
-            <div>
-              <PageHeader>
-              <Card>
-              <Card>
-              <CreateStaffModal>
-              <ViewStaffModal>
-              <EditStaffModal>
-              <DeleteStaffModal isOpen={true} onClose={function onClose} onConfirm={function handleDeleteConfirm} ...>
-                <ConfirmationModal isOpen={true} onClose={function onClose} onConfirm={function handleDeleteConfirm} ...>
-                  <Modal isOpen={true} onClose={function onClose} title="Delete Sta..." size="sm" showCloseButton={true}>
-                    <div className="jsx-d287f3...">
-                      <div>
-                      <div className="jsx-d287f3...">
-                        <div className="jsx-d287f3...">
-                          <div>
-                          <div className="jsx-d287f3...">
-                            <div className="space-y-4">
-                              <div>
->                             <p className="text-center text-gray-700 leading-relaxed">
-                                <div className="space-y-4">
-                                  <div className="flex items...">
-                                    <Avatar>
-                                    <div className="flex-1 min...">
->                                     <p className="font-semibold text-navy-900 truncate">
-                                      ...
-                                  ...
-                            ...
-                      ...
-      ...
-src/components/dashboard/staff/DeleteStaffModal.tsx (48:15) @ DeleteStaffModal
+Cannot destructure property 'label' of 'data' as it is undefined.
+
+src/components/dashboard/stats/StatCard.tsx (13:11) @ StatCard
 
 
-  46 |             />
-  47 |             <div className="flex-1 min-w-0">
-> 48 |               <p className="font-semibold text-navy-900 truncate">{fullName}</p>
-     |               ^
-  49 |               <p className="text-sm text-gray-600 truncate">{staff.email}</p>
-  50 |               <div className="flex items-center gap-2 mt-2 flex-wrap">
-  51 |                 <StatusBadge status={staff.status} size="sm" />
+  11 |
+  12 | export const StatCard: React.FC<StatCardProps> = ({ data }) => {
+> 13 |   const { label, value, change, changeLabel, icon, trend, color = 'primary' } = data;
+     |           ^
+  14 |
+  15 |   // Color variants
+  16 |   const colorClasses = {
 Call Stack
-19
+14
 
-Show 16 ignore-listed frame(s)
-p
-<anonymous>
-DeleteStaffModal
-src/components/dashboard/staff/DeleteStaffModal.tsx (48:15)
-StaffPage
-src/app/(dashboard)/super-admin/staff/page.tsx (325:7)
-1Console Error
+Show 12 ignore-listed frame(s)
+StatCard
+src/components/dashboard/stats/StatCard.tsx (13:11)
+AdminDashboardPage
+src/app/(dashboard)/admin/page.tsx (20:9)
 
 
-<p> cannot contain a nested <p>.
-See this log for the ancestor stack trace.
+1/1
 
-src/components/ui/ConfirmationModal.tsx (89:9) @ ConfirmationModal
+Next.js 15.5.4
+Turbopack
+Runtime TypeError
 
 
-  87 |
-  88 |         {/* Message */}
-> 89 |         <p className="text-center text-gray-700 leading-relaxed">
-     |         ^
-  90 |           {message}
-  91 |         </p>
-  92 |       </div>
+Cannot destructure property 'label' of 'data' as it is undefined.
+
+src/components/dashboard/stats/StatCard.tsx (13:11) @ StatCard
+
+
+  11 |
+  12 | export const StatCard: React.FC<StatCardProps> = ({ data }) => {
+> 13 |   const { label, value, change, changeLabel, icon, trend, color = 'primary' } = data;
+     |           ^
+  14 |
+  15 |   // Color variants
+  16 |   const colorClasses = {
 Call Stack
-22
+14
 
-Show 18 ignore-listed frame(s)
-p
-<anonymous>
-ConfirmationModal
-src/components/ui/ConfirmationModal.tsx (89:9)
-DeleteStaffModal
-src/components/dashboard/staff/DeleteStaffModal.tsx (32:5)
-StaffPage
-src/app/(dashboard)/super-admin/staff/page.tsx (325:7)
-1
+Show 12 ignore-listed frame(s)
+StatCard
+src/components/dashboard/stats/StatCard.tsx (13:11)
+AdminDashboardPage
+src/app/(dashboard)/admin/page.tsx (20:9)

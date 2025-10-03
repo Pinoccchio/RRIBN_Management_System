@@ -20,7 +20,7 @@ export const SUPER_ADMIN_NAV: NavigationItem[] = [
     label: 'Dashboard',
     href: '/super-admin',
     icon: 'LayoutDashboard',
-    description: 'Overview & system metrics',
+    description: 'System overview & monitoring',
   },
   {
     label: 'Administrators',
@@ -29,35 +29,16 @@ export const SUPER_ADMIN_NAV: NavigationItem[] = [
     description: 'Manage administrator accounts',
   },
   {
-    label: 'Staff',
-    href: '/super-admin/staff',
-    icon: 'Users',
-    description: 'Manage staff across companies',
-  },
-  {
-    label: 'Reservists',
-    href: '/super-admin/reservists',
-    icon: 'Shield',
-    description: 'Full reservist oversight',
-  },
-  {
-    label: 'Training',
-    href: '/super-admin/training',
-    icon: 'GraduationCap',
-    description: 'System-wide training management',
-  },
-  {
-    label: 'Reports',
-    href: '/super-admin/reports',
-    icon: 'FileText',
-    description: 'Comprehensive reporting',
-  },
-  {
     label: 'Analytics',
     href: '/super-admin/analytics',
     icon: 'TrendingUp',
-    description: 'Prescriptive analytics',
-    badge: 'Exclusive',
+    description: 'System analytics & monitoring',
+  },
+  {
+    label: 'Audit Logs',
+    href: '/super-admin/audit-logs',
+    icon: 'FileSearch',
+    description: 'Security & activity logs',
   },
   {
     label: 'Settings',
@@ -66,32 +47,44 @@ export const SUPER_ADMIN_NAV: NavigationItem[] = [
     description: 'System configuration',
   },
   {
-    label: 'Audit Logs',
-    href: '/super-admin/audit-logs',
-    icon: 'FileSearch',
-    description: 'Security & activity logs',
+    label: 'Oversight',
+    href: '/super-admin/oversight',
+    icon: 'Eye',
+    description: 'Monitor system activities',
   },
 ];
 
-// Admin Navigation (for future use)
+// Admin Navigation
 export const ADMIN_NAV: NavigationItem[] = [
   {
     label: 'Dashboard',
     href: '/admin',
     icon: 'LayoutDashboard',
-    description: 'Overview & metrics',
+    description: 'Battalion overview',
+  },
+  {
+    label: 'Companies',
+    href: '/admin/companies',
+    icon: 'Building2',
+    description: 'Manage battalion companies',
   },
   {
     label: 'Staff',
     href: '/admin/staff',
     icon: 'Users',
-    description: 'Manage assigned staff',
+    description: 'Manage staff accounts',
   },
   {
     label: 'Reservists',
     href: '/admin/reservists',
     icon: 'Shield',
     description: 'Manage reservists',
+  },
+  {
+    label: 'Analytics',
+    href: '/admin/analytics',
+    icon: 'BarChart3',
+    description: 'Promotion recommendations',
   },
   {
     label: 'Training',
@@ -103,13 +96,13 @@ export const ADMIN_NAV: NavigationItem[] = [
     label: 'Reports',
     href: '/admin/reports',
     icon: 'FileText',
-    description: 'Company reports',
+    description: 'Battalion reports',
   },
   {
     label: 'Announcements',
     href: '/admin/announcements',
     icon: 'Bell',
-    description: 'View announcements',
+    description: 'Announcements',
   },
 ];
 

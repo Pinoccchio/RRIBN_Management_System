@@ -208,10 +208,228 @@ START PROMOTION EVALUATION
 
 ## **IV. DATABASE SCHEMA REQUIREMENTS**
 
-### **Reservist Promotion Data Model**
+### **🔴 CURRENT SYSTEM: SUPABASE POSTGRESQL 🔴**
+
+> **Updated October 2025 - Next.js 15 + Supabase Architecture**
+
+The system uses **Supabase PostgreSQL** with Row-Level Security (RLS), NOT MongoDB. Promotion data integrates with existing tables and new promotion-specific tables.
+
+### **Primary Database Schema: Supabase PostgreSQL** ✅
+
+> **THIS IS THE ACTIVE SCHEMA - Use this for all development**
+
+```sql
+-- Extension to reservist_details for promotion tracking
+ALTER TABLE public.reservist_details
+ADD COLUMN IF NOT EXISTS current_rank_date DATE,
+ADD COLUMN IF NOT EXISTS years_in_grade NUMERIC GENERATED ALWAYS AS (
+  EXTRACT(YEAR FROM AGE(CURRENT_DATE, current_rank_date))
+  + EXTRACT(MONTH FROM AGE(CURRENT_DATE, current_rank_date)) / 12.0
+) STORED;
+
+-- Promotion Eligibility Tracking
+CREATE TABLE IF NOT EXISTS public.promotion_eligibility (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  assessment_date TIMESTAMPTZ DEFAULT now(),
+  current_rank TEXT NOT NULL,
+  target_rank TEXT NOT NULL,
+
+  -- Criterion (a): Certificate of Capacity
+  has_certificate BOOLEAN DEFAULT false,
+  certificate_details JSONB, -- { target_rank, courses_completed: [...] }
+
+  -- Criterion (b): Vacancy
+  is_vacancy_available BOOLEAN DEFAULT false,
+  vacancy_details JSONB, -- { target_position, vacancy_id, last_checked }
+
+  -- Criterion (c): Time in Grade (from EO 212)
+  years_in_grade NUMERIC,
+  required_years NUMERIC,
+  time_in_grade_met BOOLEAN DEFAULT false,
+
+  -- Criterion (d): Educational Courses
+  required_courses JSONB, -- Array of required courses
+  completed_courses JSONB, -- Array of completed courses
+  education_requirement_met BOOLEAN DEFAULT false,
+
+  -- Criterion (e): Active Duty Training & Efficiency
+  total_active_duty_days INTEGER DEFAULT 0,
+  current_efficiency_rating TEXT CHECK (current_efficiency_rating IN ('Excellent', 'Satisfactory', 'Unsatisfactory')),
+  active_duty_requirement_met BOOLEAN DEFAULT false,
+
+  -- Scoring
+  certificate_score INTEGER DEFAULT 0 CHECK (certificate_score IN (0, 20)),
+  vacancy_score INTEGER DEFAULT 0 CHECK (vacancy_score IN (0, 20)),
+  time_in_grade_score INTEGER DEFAULT 0 CHECK (time_in_grade_score IN (0, 20)),
+  education_score INTEGER DEFAULT 0 CHECK (education_score IN (0, 20)),
+  active_duty_score INTEGER DEFAULT 0 CHECK (active_duty_score IN (0, 20)),
+  total_score INTEGER GENERATED ALWAYS AS (
+    certificate_score + vacancy_score + time_in_grade_score + education_score + active_duty_score
+  ) STORED,
+  percentage NUMERIC GENERATED ALWAYS AS (total_score::NUMERIC) STORED,
+
+  -- Eligibility Status
+  eligibility_status TEXT GENERATED ALWAYS AS (
+    CASE
+      WHEN total_score = 100 THEN 'ELIGIBLE'
+      WHEN total_score >= 60 THEN 'PARTIALLY QUALIFIED'
+      ELSE 'NOT ELIGIBLE'
+    END
+  ) STORED,
+  is_eligible BOOLEAN GENERATED ALWAYS AS (total_score = 100) STORED,
+
+  -- Recommendations
+  is_recommended_for_promotion BOOLEAN DEFAULT false,
+  priority_score NUMERIC,
+  rank_in_promotion_list INTEGER,
+  recommended_actions TEXT[],
+  development_plan JSONB, -- Array of { requirement, status, action, completion_date }
+
+  -- Seniority
+  position_in_grade INTEGER,
+  total_commissioned_service NUMERIC,
+  seniority_date DATE,
+
+  -- Metadata
+  assessed_by UUID REFERENCES public.accounts(id),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+
+  CONSTRAINT unique_assessment UNIQUE (reservist_id, assessment_date)
+);
+
+-- Indexes
+CREATE INDEX idx_promotion_reservist ON promotion_eligibility(reservist_id);
+CREATE INDEX idx_promotion_status ON promotion_eligibility(eligibility_status);
+CREATE INDEX idx_promotion_eligible ON promotion_eligibility(is_eligible) WHERE is_eligible = true;
+
+-- Enable RLS
+ALTER TABLE public.promotion_eligibility ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "promotion_eligibility_select" ON public.promotion_eligibility
+  FOR SELECT USING (
+    -- Super admin sees all
+    (auth.jwt() ->> 'role')::text = 'super_admin'
+    -- Reservists see their own
+    OR reservist_id = auth.uid()
+  );
+
+-- Commissioned Service History (for total service calculation)
+CREATE TABLE IF NOT EXISTS public.commissioned_service_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  organization TEXT NOT NULL, -- 'Philippine Army', 'US Army Reserve Corps', 'Philippine Constabulary'
+  start_date DATE NOT NULL,
+  end_date DATE,
+  rank_held TEXT NOT NULL,
+  total_years NUMERIC GENERATED ALWAYS AS (
+    EXTRACT(YEAR FROM AGE(COALESCE(end_date, CURRENT_DATE), start_date))
+    + EXTRACT(MONTH FROM AGE(COALESCE(end_date, CURRENT_DATE), start_date)) / 12.0
+  ) STORED,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Training Courses (for criterion d)
+CREATE TABLE IF NOT EXISTS public.training_courses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  course_id TEXT UNIQUE NOT NULL,
+  course_name TEXT NOT NULL,
+  arm_service TEXT, -- Infantry, Artillery, etc.
+  grade_level TEXT, -- Rank level this course is for
+  is_required BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Course Completion Records
+CREATE TABLE IF NOT EXISTS public.course_completions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  course_id TEXT NOT NULL REFERENCES public.training_courses(course_id),
+  completion_date DATE NOT NULL,
+  certificate_number TEXT,
+  prescribed_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  CONSTRAINT unique_course_completion UNIQUE (reservist_id, course_id)
+);
+
+-- Active Duty Training Records (for criterion e)
+CREATE TABLE IF NOT EXISTS public.active_duty_training (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  training_name TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  days_completed INTEGER GENERATED ALWAYS AS (end_date - start_date + 1) STORED,
+  location TEXT,
+  efficiency_report JSONB, -- { report_form: 'P.A. Form No. 13A', rating, evaluator, period_covered }
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Efficiency Ratings (for criterion e)
+CREATE TABLE IF NOT EXISTS public.efficiency_ratings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  report_form TEXT DEFAULT 'P.A. Form No. 13A',
+  report_date DATE NOT NULL,
+  rating TEXT NOT NULL CHECK (rating IN ('Excellent', 'Satisfactory', 'Unsatisfactory')),
+  evaluator TEXT NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  remarks TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Vacancy Tracking (for criterion b)
+CREATE TABLE IF NOT EXISTS public.promotion_vacancies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  vacancy_id TEXT UNIQUE NOT NULL,
+  rank TEXT NOT NULL,
+  company TEXT REFERENCES public.companies(code),
+  position_title TEXT NOT NULL,
+  is_available BOOLEAN DEFAULT true,
+  created_date DATE DEFAULT CURRENT_DATE,
+  filled_date DATE,
+  filled_by UUID REFERENCES public.accounts(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Assessment History
+CREATE TABLE IF NOT EXISTS public.promotion_assessment_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  assessment_id UUID REFERENCES public.promotion_eligibility(id),
+  assessment_date TIMESTAMPTZ NOT NULL,
+  total_score INTEGER NOT NULL,
+  eligibility_status TEXT NOT NULL,
+  assessed_by UUID REFERENCES public.accounts(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### **⚠️ DEPRECATED: Legacy MongoDB Schema (For Reference Only) ⚠️**
+
+> **🔴 DO NOT USE THIS SCHEMA 🔴**
+>
+> This MongoDB schema is **DEPRECATED** and kept for historical reference only.
+>
+> **Current System Uses:**
+> - **Database**: Supabase PostgreSQL (see Primary Database Schema above)
+> - **Backend**: Next.js 15 API Routes (NOT Express.js)
+> - **Frontend**: Next.js 15 with React Server Components
+> - **Auth**: Supabase Auth with Row-Level Security (RLS)
+> - **Storage**: Supabase Storage (NOT local filesystem)
+>
+> **For all new development, use the Supabase PostgreSQL schema defined above.**
 
 ```javascript
-ReservistPromotionProfile = {
+// ⚠️ WARNING: This is the OLD MongoDB schema - NOT USED in current system
+// Current system uses Supabase PostgreSQL (see SQL schema above)
+// Last updated: Pre-October 2025 (deprecated)
+ReservistPromotionProfile_LEGACY = {
   // Basic Information
   service_id: String,
   full_name: String,
@@ -642,40 +860,115 @@ function calculateTotalCommissionedService(service_history) {
 }
 ```
 
-### **Eligibility Score Calculation**
-```javascript
-function calculateEligibilityScore(reservist) {
-  let score = 0;
-  
+### **Eligibility Score Calculation (Supabase)**
+
+```typescript
+// Server-side function using Supabase
+import { createClient } from '@/lib/supabase/server';
+
+async function calculateEligibilityScore(reservistId: string) {
+  const supabase = await createClient();
+
+  // Fetch reservist data
+  const { data: reservist, error } = await supabase
+    .from('reservist_details')
+    .select(`
+      *,
+      accounts!inner(id, email),
+      course_completions(*, training_courses(*)),
+      active_duty_training(*),
+      efficiency_ratings(*),
+      commissioned_service_history(*)
+    `)
+    .eq('id', reservistId)
+    .single();
+
+  if (error || !reservist) {
+    throw new Error('Reservist not found');
+  }
+
+  let scores = {
+    certificate_score: 0,
+    vacancy_score: 0,
+    time_in_grade_score: 0,
+    education_score: 0,
+    active_duty_score: 0,
+  };
+
   // Criterion (a): Certificate of Capacity - 20 points
-  if (reservist.certificate_of_capacity.has_certificate) {
-    score += 20;
+  const hasCertificate = await checkCertificateOfCapacity(reservist);
+  if (hasCertificate) {
+    scores.certificate_score = 20;
   }
-  
+
   // Criterion (b): Vacancy Available - 20 points
-  if (reservist.vacancy_status.is_vacancy_available) {
-    score += 20;
+  const { data: vacancy } = await supabase
+    .from('promotion_vacancies')
+    .select('*')
+    .eq('rank', reservist.target_rank)
+    .eq('is_available', true)
+    .maybeSingle();
+
+  if (vacancy) {
+    scores.vacancy_score = 20;
   }
-  
+
   // Criterion (c): Time in Grade - 20 points
-  const required_years = RANK_REQUIREMENTS[reservist.current_rank].years;
-  if (reservist.current_rank_details.years_in_grade >= required_years) {
-    score += 20;
+  const requiredYears = RANK_REQUIREMENTS[reservist.rank]?.required_years || 0;
+  if (reservist.years_in_grade >= requiredYears) {
+    scores.time_in_grade_score = 20;
   }
-  
+
   // Criterion (d): Educational Courses - 20 points
-  if (reservist.educational_requirements.is_qualified) {
-    score += 20;
+  const hasRequiredCourses = await checkRequiredCourses(reservist);
+  if (hasRequiredCourses) {
+    scores.education_score = 20;
   }
-  
+
   // Criterion (e): Active Duty & Efficiency - 20 points
-  const has_21_days = reservist.active_duty_records.total_active_duty_days >= 21;
-  const has_satisfactory = reservist.active_duty_records.current_efficiency_rating !== "Unsatisfactory";
-  if (has_21_days && has_satisfactory) {
-    score += 20;
+  const totalActiveDutyDays = reservist.active_duty_training
+    ?.reduce((sum: number, adt: any) => sum + adt.days_completed, 0) || 0;
+
+  const latestEfficiency = reservist.efficiency_ratings?.[0];
+  const hasSatisfactoryRating = latestEfficiency?.rating !== 'Unsatisfactory';
+
+  if (totalActiveDutyDays >= 21 && hasSatisfactoryRating) {
+    scores.active_duty_score = 20;
   }
-  
-  return score;
+
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  // Insert/update promotion_eligibility table
+  await supabase.from('promotion_eligibility').upsert({
+    reservist_id: reservistId,
+    assessment_date: new Date().toISOString(),
+    current_rank: reservist.rank,
+    target_rank: getNextRank(reservist.rank),
+    ...scores,
+  });
+
+  return {
+    scores,
+    total_score: totalScore,
+    percentage: totalScore,
+    is_eligible: totalScore === 100,
+    eligibility_status: totalScore === 100 ? 'ELIGIBLE' :
+                       totalScore >= 60 ? 'PARTIALLY QUALIFIED' :
+                       'NOT ELIGIBLE',
+  };
+}
+
+// Helper function
+function getNextRank(currentRank: string): string {
+  const rankProgression: Record<string, string> = {
+    'Third Lieutenant': 'Second Lieutenant',
+    'Second Lieutenant': 'First Lieutenant',
+    'First Lieutenant': 'Captain',
+    'Captain': 'Major',
+    'Major': 'Lieutenant Colonel',
+    'Lieutenant Colonel': 'Colonel',
+  };
+  return rankProgression[currentRank] || currentRank;
 }
 ```
 
@@ -775,38 +1068,222 @@ const EFFICIENCY_RATINGS = {
 
 ---
 
-## **IX. API ENDPOINTS FOR PRESCRIPTIVE ANALYTICS**
+## **IX. API ENDPOINTS FOR PRESCRIPTIVE ANALYTICS (Next.js 15)**
+
+### **🔴 CURRENT IMPLEMENTATION - Updated October 2025 🔴**
+
+> **Technology Stack:**
+> - **Framework**: Next.js 15 with App Router
+> - **API Pattern**: Route Handlers (`src/app/api/*/route.ts`)
+> - **Database**: Supabase PostgreSQL
+> - **Auth**: Supabase Auth + Middleware
+> - **Authorization**: Row-Level Security (RLS) policies
+
+### **API Route Structure:**
+All promotion analytics routes are in: `src/app/api/analytics/promotion/`
 
 ### **1. Check Individual Eligibility**
-```
+
+```typescript
+// src/app/api/analytics/promotion/check-eligibility/route.ts
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+
+  // Get authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Parse request body
+  const { reservist_id } = await request.json();
+
+  // Calculate eligibility (uses RLS to enforce access control)
+  const eligibilityReport = await calculateEligibilityScore(reservist_id);
+
+  if (!eligibilityReport) {
+    return NextResponse.json({ error: 'Reservist not found or access denied' }, { status: 404 });
+  }
+
+  return NextResponse.json(eligibilityReport);
+}
+
+// Helper function to calculate eligibility
+async function calculateEligibilityScore(reservistId: string) {
+  const supabase = await createClient();
+
+  // Fetch reservist with all related data (RLS automatically enforced)
+  const { data: reservist, error } = await supabase
+    .from('reservist_details')
+    .select(`
+      *,
+      accounts!inner(id, email),
+      training_registrations!inner(
+        *,
+        training_sessions(*)
+      ),
+      course_completions(*),
+      active_duty_training(*),
+      efficiency_ratings(*),
+      commissioned_service_history(*)
+    `)
+    .eq('id', reservistId)
+    .single();
+
+  if (error || !reservist) return null;
+
+  // Calculate scores based on EO 212 criteria
+  const scores = {
+    certificate_score: 0,
+    vacancy_score: 0,
+    time_in_grade_score: 0,
+    education_score: 0,
+    active_duty_score: 0,
+  };
+
+  // [... calculation logic ...]
+
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  return {
+    reservist_id: reservistId,
+    name: `${reservist.accounts.first_name} ${reservist.accounts.last_name}`,
+    current_rank: reservist.rank,
+    target_rank: getNextRank(reservist.rank),
+    total_score: totalScore,
+    eligibility_status: totalScore === 100 ? 'ELIGIBLE' : 'NOT ELIGIBLE',
+    criteria_results: scores,
+    missing_requirements: identifyMissingRequirements(scores),
+    recommendations: generateRecommendations(scores),
+  };
+}
+
+/* Request Example:
 POST /api/analytics/promotion/check-eligibility
-Body: { "reservist_id": "AFP-2024-12345" }
-Response: { eligibility_report }
+{
+  "reservist_id": "uuid-here"
+}
+*/
 ```
 
 ### **2. Generate Company Recommendations**
-```
-GET /api/analytics/promotion/recommendations?company=Alpha&rank=Captain
-Response: { recommendation_list }
+
+```typescript
+// src/app/api/analytics/promotion/recommendations/route.ts
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+
+  // Get query parameters
+  const { searchParams } = new URL(request.url);
+  const company = searchParams.get('company');
+  const targetRank = searchParams.get('rank');
+
+  if (!company || !targetRank) {
+    return NextResponse.json(
+      { error: 'Missing required parameters: company and rank' },
+      { status: 400 }
+    );
+  }
+
+  // Query promotion eligibility (RLS enforced)
+  const { data: eligibleCandidates, error } = await supabase
+    .from('promotion_eligibility')
+    .select(`
+      *,
+      reservist:reservist_details!inner(
+        *,
+        accounts!inner(first_name, last_name)
+      )
+    `)
+    .eq('reservist.company', company)
+    .eq('target_rank', targetRank)
+    .eq('is_eligible', true)
+    .order('priority_score', { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Get partially qualified and not eligible counts
+  const { count: partialCount } = await supabase
+    .from('promotion_eligibility')
+    .select('*', { count: 'exact', head: true })
+    .eq('eligibility_status', 'PARTIALLY QUALIFIED');
+
+  const { count: notEligibleCount } = await supabase
+    .from('promotion_eligibility')
+    .select('*', { count: 'exact', head: true })
+    .eq('eligibility_status', 'NOT ELIGIBLE');
+
+  return NextResponse.json({
+    company,
+    target_rank: targetRank,
+    eligible_candidates: eligibleCandidates?.length || 0,
+    recommendation_list: eligibleCandidates?.map((candidate, index) => ({
+      rank: index + 1,
+      service_id: candidate.reservist.service_number,
+      name: `${candidate.reservist.accounts.first_name} ${candidate.reservist.accounts.last_name}`,
+      current_rank: candidate.current_rank,
+      years_in_grade: candidate.years_in_grade,
+      total_score: candidate.total_score,
+      efficiency_rating: candidate.current_efficiency_rating,
+      recommendation: candidate.total_score === 100 ? 'HIGHLY RECOMMENDED' : 'RECOMMENDED',
+    })),
+    partially_qualified: partialCount || 0,
+    not_eligible: notEligibleCount || 0,
+  });
+}
+
+/* Request Example:
+GET /api/analytics/promotion/recommendations?company=ALPHA&rank=Captain
+*/
 ```
 
 ### **3. Analyze Promotion Gaps**
-```
-GET /api/analytics/promotion/gaps/:reservist_id
-Response: { gap_analysis, development_plan }
+```typescript
+// GET /api/analytics/promotion/gaps/[id]
+GET /api/analytics/promotion/gaps/[reservist_id]
+Response: {
+  reservist_id: string,
+  current_eligibility_score: number,
+  gaps_identified: [...],
+  development_plan: [...],
+  estimated_eligibility_date: string
+}
 ```
 
 ### **4. Get Promotion Dashboard Data**
-```
-GET /api/analytics/promotion/dashboard?company=Alpha
-Response: { dashboard_metrics }
+```typescript
+// GET /api/analytics/promotion/dashboard
+GET /api/analytics/promotion/dashboard?company=ALPHA
+Response: {
+  total_eligible: number,
+  by_rank: {...},
+  upcoming_eligibility: [...],
+  vacancy_status: {...}
+}
 ```
 
 ### **5. Run Batch Eligibility Check**
-```
+```typescript
+// POST /api/analytics/promotion/batch-check
 POST /api/analytics/promotion/batch-check
-Body: { "company_id": "Alpha", "rank": "First Lieutenant" }
-Response: { batch_results }
+Body: { company: string, rank: string }
+Response: {
+  company: string,
+  rank: string,
+  total_checked: number,
+  eligible: number,
+  results: [...]
+}
+
+// Uses Supabase batch query
 ```
 
 ---
@@ -885,7 +1362,8 @@ The algorithm transforms a manual, paper-based promotion evaluation process into
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** March 2025  
-**Based on:** Executive Order No. 212 (July 6, 1939)  
+**Document Version:** 2.0
+**Last Updated:** October 2025
+**Based on:** Executive Order No. 212 (July 6, 1939)
 **For:** Centralize Reservist Management System - 301st Community Defense Center
+**Technology Stack:** Next.js 15 + Supabase PostgreSQL (updated from MongoDB/Express.js)

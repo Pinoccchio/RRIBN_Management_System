@@ -3,6 +3,50 @@
 
 ---
 
+## **🔐 ACCOUNT CREATION & MANAGEMENT HIERARCHY**
+
+> **VERIFIED CORRECT - Updated October 2025**
+
+### **Critical Account Management Rules:**
+
+| Action | Who Performs | Authority Level |
+|--------|--------------|-----------------|
+| **Create Administrator Account** | Super Administrator ONLY | Highest |
+| **Create Staff Account** | Administrator | High |
+| **Activate/Deactivate Administrator** | Super Administrator ONLY | Highest |
+| **Activate/Deactivate Staff** | Super Administrator OR Administrator | High |
+| **Approve Reservist Account** | Staff (initial) → Administrator (final) | Medium |
+| **Oversee ALL Accounts (Web + Mobile)** | Super Administrator ONLY | Highest |
+
+### **Account Creation Flow:**
+
+```
+SUPER ADMINISTRATOR
+  ├─ Creates → Administrator Accounts
+  ├─ Activates/Deactivates → Administrator Accounts
+  ├─ Activates/Deactivates → Staff Accounts (can override)
+  └─ Oversees → ALL Accounts (Web + Mobile)
+
+ADMINISTRATOR
+  ├─ Creates → Staff Accounts
+  ├─ Activates/Deactivates → Staff Accounts
+  ├─ Approves → Reservist Accounts (final approval)
+  └─ Cannot Create/Manage → Other Administrators
+
+STAFF
+  ├─ Registers → Reservist Accounts
+  ├─ Initial Verification → Reservist Documents
+  └─ Cannot Create → Administrator or Staff Accounts
+```
+
+**Important Notes:**
+- Super Administrator has **FULL CONTROL** over administrator accounts
+- Only Super Administrator can **archive** both staff and administrator accounts
+- Staff can only **recommend** activation of reservist accounts (Administrator approves)
+- Super Administrator oversees **ALL accounts** on both Web and Mobile platforms
+
+---
+
 ## **SUPER ADMINISTRATOR**
 
 ### **Access Level**
@@ -12,10 +56,14 @@ Highest system authority with complete oversight and control over all modules an
 
 #### **1. User Authentication & Account Management**
 - **Login** with secure credentials
-- **Create Administrator accounts**
-- **Create Staff accounts**
-- **Approve newly created Admin and Staff accounts**
+- **Create Administrator accounts** (ONLY Super Admin can do this)
+- **Create Staff accounts** (Super Admin can do this, but typically delegated to Administrators)
+- **Approve and Activate Administrator accounts** (ONLY Super Admin)
+- **Approve and Activate Staff accounts** (Super Admin OR Administrator)
+- **Archive/Deactivate Administrator accounts** (ONLY Super Admin)
+- **Archive/Deactivate Staff accounts** (Super Admin OR Administrator)
 - **Manage user hierarchies** across the entire system
+- **Oversee ALL accounts** (Web + Mobile platforms)
 
 #### **2. Dashboard & Analytics**
 - **View system-wide dashboards** with comprehensive metrics
@@ -29,21 +77,26 @@ Highest system authority with complete oversight and control over all modules an
   - Generate compliance alerts
   - Optimize reservist deployment and assignments
 
-#### **3. Administrator Management**
+#### **3. Administrator Management** (Super Admin EXCLUSIVE)
 - **View all administrator accounts** and their statuses
-- **Create new administrator accounts** with role assignments
-- **Modify administrator details** and permissions
-- **Deactivate administrator accounts**
-- **Monitor administrator activities**
+- **Create new administrator accounts** with role assignments (EXCLUSIVE to Super Admin)
+- **Modify administrator details** and permissions (EXCLUSIVE to Super Admin)
+- **Activate administrator accounts** after creation (EXCLUSIVE to Super Admin)
+- **Deactivate administrator accounts** (EXCLUSIVE to Super Admin)
+- **Archive administrator accounts** (EXCLUSIVE to Super Admin)
+- **Monitor administrator activities** across all companies
 - **Maintain audit logs** of all administrator changes
+- **Override any administrator action** when necessary
 
 #### **4. Staff Management**
 - **View all staff accounts** across all companies (Alpha, Bravo, Charlie, HQ, Signal, FAB)
-- **Add new staff members** with specific company assignments
+- **Add new staff members** with specific company assignments (can delegate to Administrators)
 - **Monitor staff activities** (document validation, training management, record updates)
 - **Adjust company assignments** for staff
-- **Modify staff access levels**
-- **Deactivate staff accounts**
+- **Modify staff access levels** and permissions
+- **Activate staff accounts** (after Administrator creates them)
+- **Deactivate staff accounts** (Super Admin OR Administrator)
+- **Archive staff accounts** (Super Admin has full control, can override Administrator)
 - **Review detailed logs** of staff interactions with reservist records
 
 #### **5. Reservist Management (Full Oversight)**
@@ -116,14 +169,18 @@ Supervisory role with broad system-wide management capabilities across companies
 - **Monitor document processing statistics**
 - **Apply filters** for detailed analytics
 
-#### **3. Staff Management**
+#### **3. Staff Management** (Administrator Primary Responsibility)
+- **Create new staff accounts** (Administrator's PRIMARY responsibility)
 - **View staff listings** across assigned companies
 - **Filter staff by company**
-- **Monitor staff activities**
-- **Add new staff members** (requires detailed information and company assignment)
-- **Update staff information**
-- **Modify company assignments**
-- **Request staff deactivation** (requires super administrator approval)
+- **Monitor staff activities** in detail
+- **Add new staff members** with detailed information and company assignment
+- **Update staff information** and contact details
+- **Modify company assignments** for staff
+- **Activate staff accounts** after creation
+- **Deactivate staff accounts** within their jurisdiction
+- **Request staff permanent deletion** (requires Super Administrator approval)
+- **Cannot create or manage** Administrator accounts (only Super Admin can)
 
 #### **4. Reservist Management**
 - **View reservist per company**
@@ -365,18 +422,24 @@ Individual user with self-service capabilities for personal records and training
 - Prescriptive analytics recommendations (Super Admin only)
 
 ### **Data Management**
-- Centralized database (MongoDB)
-- Real-time data synchronization
-- Document version control
-- Comprehensive audit trails
-- Data validation and integrity checks
+- Centralized database (Supabase PostgreSQL)
+- Real-time data synchronization via Supabase subscriptions
+- Document version control via `version` column in documents table
+- Comprehensive audit trails via `audit_logs` table
+- Data validation via database constraints and TypeScript types
+- Row-Level Security (RLS) policies for data isolation
 - Export capabilities for reports
 
 ### **Platform Distribution**
 - **Web Application:** Super Administrator, Administrator, Staff
-- **Mobile Application:** Reservist (iOS and Android)
-- Backend: Express.js API server
-- Database: MongoDB
+  - Built with Next.js 15 + TypeScript
+  - Deployed on Vercel
+- **Mobile Application:** Reservist (iOS and Android - planned)
+  - React Native (future development)
+- **Backend:**
+  - Supabase (PostgreSQL database + Auth + Storage + Edge Functions)
+  - Next.js API Routes for custom business logic
+- **Database:** Supabase PostgreSQL with Row-Level Security
 
 ---
 
@@ -415,26 +478,30 @@ Individual user with self-service capabilities for personal records and training
 ## **DEVELOPMENT RECOMMENDATIONS**
 
 ### **For Implementation:**
-1. Implement strict role-based access control from the start
-2. Ensure all actions are logged with timestamps and user IDs
-3. Build approval workflows for sensitive operations
-4. Create automated notification triggers for each user action
-5. Design mobile interface with offline capability considerations
-6. Implement real-time synchronization between web and mobile platforms
-7. Build the prescriptive analytics module with extensibility in mind
-8. Ensure all document uploads are encrypted and validated
-9. Create comprehensive admin panels for each user role
-10. Build flexible reporting system with export capabilities
+1. **Row-Level Security (RLS)** - Implement RLS policies on all Supabase tables
+   - Super Admin: `(auth.jwt() ->> 'role')::text = 'super_admin'`
+   - Admin: `(auth.jwt() ->> 'role')::text IN ('super_admin', 'admin')`
+   - Staff: Check `assigned_companies` array for company-level access
+   - Reservist: `auth.uid() = id` (own data only)
+2. Ensure all actions are logged via `audit_logs` table with triggers
+3. Build approval workflows using `status` enums and `approved_by` columns
+4. Create automated notification triggers via database triggers or Edge Functions
+5. Design mobile interface with offline capability (future - React Native)
+6. Implement real-time synchronization via Supabase Realtime subscriptions
+7. Build prescriptive analytics using Supabase Edge Functions or Next.js API routes
+8. Use Supabase Storage for document uploads with signed URLs and access policies
+9. Create comprehensive admin panels using Next.js Server Components
+10. Build flexible reporting with Supabase views and materialized views
 
 ### **For Security:**
-1. Implement multi-factor authentication for admin roles
-2. Use encryption for all data transmission and storage
-3. Create detailed audit trails for compliance
-4. Implement session timeout and secure logout
-5. Build password recovery with proper verification
-6. Ensure API endpoints are properly secured by role
-7. Implement rate limiting to prevent abuse
-8. Use secure file upload validation and virus scanning
+1. Implement Supabase Auth with email/password (MFA available via Supabase)
+2. Use HTTPS for all connections (enforced by Vercel and Supabase)
+3. Create detailed audit trails via `audit_logs` table with automatic triggers
+4. Implement session management via Supabase Auth (configurable timeout)
+5. Build password recovery using Supabase Auth reset password flow
+6. Secure API endpoints with middleware checks and Supabase RLS
+7. Implement rate limiting via Supabase Edge Functions or Vercel middleware
+8. Use Supabase Storage validation policies and file type restrictions
 
 ### **For User Experience:**
 1. Design intuitive dashboards for each role
@@ -448,4 +515,100 @@ Individual user with self-service capabilities for personal records and training
 
 ---
 
-This guide provides a comprehensive overview of all user roles, their features, and capabilities for development of the Centralize Reservist Management System.
+## **ROW-LEVEL SECURITY (RLS) POLICY EXAMPLES**
+
+### **Purpose:**
+RLS policies enforce data access control at the database level, ensuring users can only access data they're authorized to see based on their role and company assignment.
+
+### **Policy Examples:**
+
+#### **1. Super Admin - Full Access**
+```sql
+-- Super Admins can see all records
+CREATE POLICY "super_admin_all_access" ON public.accounts
+  FOR ALL
+  USING ((auth.jwt() ->> 'role')::text = 'super_admin');
+```
+
+#### **2. Admin - Company-Level Access**
+```sql
+-- Admins can see accounts in their assigned companies
+CREATE POLICY "admin_company_access" ON public.reservist_details
+  FOR SELECT
+  USING (
+    (auth.jwt() ->> 'role')::text IN ('super_admin', 'admin')
+    OR company IN (
+      SELECT unnest(assigned_companies)
+      FROM staff_details
+      WHERE id = auth.uid()
+    )
+  );
+```
+
+#### **3. Staff - Company-Specific Access**
+```sql
+-- Staff can only access reservists in their assigned companies
+CREATE POLICY "staff_assigned_companies" ON public.reservist_details
+  FOR SELECT
+  USING (
+    (auth.jwt() ->> 'role')::text IN ('super_admin', 'admin')
+    OR company IN (
+      SELECT unnest(assigned_companies)
+      FROM staff_details
+      WHERE id = auth.uid()
+    )
+  );
+```
+
+#### **4. Reservist - Own Data Only**
+```sql
+-- Reservists can only access their own profile
+CREATE POLICY "reservist_own_profile" ON public.profiles
+  FOR SELECT
+  USING (
+    (auth.jwt() ->> 'role')::text IN ('super_admin', 'admin', 'staff')
+    OR auth.uid() = id
+  );
+
+-- Reservists can only update their own profile
+CREATE POLICY "reservist_update_own_profile" ON public.profiles
+  FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+```
+
+#### **5. Document Access Control**
+```sql
+-- Documents: Users can see documents based on their role
+CREATE POLICY "document_access" ON public.documents
+  FOR SELECT
+  USING (
+    -- Super Admin sees all
+    (auth.jwt() ->> 'role')::text = 'super_admin'
+    -- Admin/Staff see documents in their companies
+    OR (
+      (auth.jwt() ->> 'role')::text IN ('admin', 'staff')
+      AND reservist_id IN (
+        SELECT id FROM reservist_details
+        WHERE company IN (
+          SELECT unnest(assigned_companies)
+          FROM staff_details
+          WHERE id = auth.uid()
+        )
+      )
+    )
+    -- Reservists see only their own documents
+    OR reservist_id = auth.uid()
+  );
+```
+
+### **Implementation Notes:**
+1. All tables must have RLS enabled: `ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;`
+2. Policies are evaluated in order - most permissive first
+3. Use `USING` clause for SELECT/UPDATE/DELETE, `WITH CHECK` for INSERT/UPDATE
+4. JWT claims are set via Supabase Auth metadata
+5. Test policies thoroughly for each role before deployment
+
+---
+
+This guide provides a comprehensive overview of all user roles, their features, and capabilities for development of the Centralize Reservist Management System using **Next.js 15 + Supabase PostgreSQL architecture**.

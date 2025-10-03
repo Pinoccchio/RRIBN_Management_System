@@ -187,28 +187,42 @@ Instead of just showing data (like a spreadsheet), the system **tells you what t
 
 ### **3. Training Management**
 - Create and schedule training sessions
+- **Track training HOURS (primary metric)** - not just training count
 - Online registration for reservists
 - Attendance tracking
 - Completion certificates
 - Training history records
+- **Accumulated training hours calculation** per reservist
 - Automatic calendar updates
+- Training hours breakdown by category (Leadership, Combat, Technical, Seminar)
 
 ### **4. Promotion System (Based on EO 212)**
 The system follows **Executive Order No. 212 (1939)** - the official law for military promotions.
 
-**5 Mandatory Criteria for Promotion:**
+**5 Mandatory Criteria for Promotion (Commissioned Officers):**
 1. ✅ **Certificate of Capacity** - Completed required courses
 2. ✅ **Vacancy Available** - Open position exists
 3. ✅ **Time in Grade** - Minimum years served (e.g., 4 years as First Lieutenant)
 4. ✅ **Educational Courses** - Completed prescribed training
 5. ✅ **Active Duty Training** - At least 21 days with "Satisfactory" rating
 
+**NCO Promotion Requirements (Different from CO):**
+1. ✅ **Training Hours** - PRIMARY METRIC (e.g., 40, 80, 120 hours minimum)
+2. ✅ **Training Count** - Number of different trainings completed
+3. ✅ **Camp Duty Days** - Minimum 30 days per year
+4. ✅ **Years Active** - Time in current rank (1-3 years depending on rank)
+5. ✅ **Seminars/Activities** - Required number completed
+
+**🔴 CRITICAL: Training Hours is THE MOST IMPORTANT metric for NCO promotions**
+
 **The system automatically:**
-- Checks all 5 criteria for every reservist
+- Checks all criteria for every reservist (NCO or CO specific)
 - Calculates eligibility scores (0-100 points)
+- **Prioritizes training HOURS over training count for NCOs**
 - Identifies who is ready for promotion (100 points)
 - Ranks candidates by priority
 - Shows what's missing for those not eligible
+- **Dynamic requirements** - Super Admin can update annually
 
 ### **5. Status Management**
 Track reservist status:
@@ -250,39 +264,129 @@ Generate comprehensive reports:
 ### **Technology Stack:**
 
 **Frontend (Web):**
-- React.js for admin/staff portal
+- **Next.js 15** with App Router - Modern React framework with SSR/SSG capabilities
+- **TypeScript** - Type-safe development
+- **Tailwind CSS v4** - Utility-first CSS framework
+- **Lucide React** - Icon library
+- **Turbopack** - Ultra-fast bundler for dev and production
 - Responsive design for desktop/tablet
 - Modern, user-friendly interface
 
 **Frontend (Mobile):**
-- React Native for iOS and Android
+- React Native for iOS and Android (planned)
 - Offline capability
 - Push notifications
 - Camera integration for document uploads
 
-**Backend:**
-- Express.js (Node.js framework)
-- RESTful API architecture
-- Role-based access control
-- Secure authentication (JWT tokens)
+**Backend & Database:**
+- **Supabase** - Complete backend solution
+  - **PostgreSQL Database** - Robust relational database
+  - **Authentication** - Built-in auth with JWT tokens
+  - **Row-Level Security (RLS)** - Database-level access control
+  - **Storage** - Secure file storage for documents and photos
+  - **Real-time subscriptions** - Live data updates
+  - **Edge Functions** - Serverless backend functions
 
-**Database:**
-- MongoDB (NoSQL database)
-- Flexible schema for military data
-- High performance for large datasets
-- Easy to scale
+**API Layer:**
+- Next.js API Routes (`/api/*`) - Server-side API endpoints
+- Supabase Client Patterns:
+  - **Client-side** (`@/lib/supabase/client.ts`) - Browser operations
+  - **Server-side** (`@/lib/supabase/server.ts`) - Server Components and API routes
+  - **Admin client** (`@/lib/supabase/admin.ts`) - Service role for privileged operations
+
+**Authentication & Authorization:**
+- Supabase Auth with email/password
+- Next.js Middleware (`middleware.ts`) - Route protection and role-based redirects
+- Row-Level Security (RLS) policies in Supabase
+- Role-based access control (RBAC): super_admin, admin, staff, reservist
 
 **Analytics Engine:**
 - Custom prescriptive analytics algorithms
-- Machine learning models for predictions
+- Server-side computation using Supabase queries
 - Real-time data processing
-- Automated recommendation system
+- Automated recommendation system (planned)
 
 **Deployment:**
-- Cloud-based (Vercel for web)
-- Secure HTTPS connections
-- Automated backups
+- **Vercel** - Next.js hosting platform
+  - Edge network for global performance
+  - Automatic SSL/HTTPS
+  - Serverless functions
+  - CI/CD integration with Git
+- **Supabase Cloud** - Managed database and backend services
+  - Automated backups
+  - Point-in-time recovery
+  - Database connection pooling
 - 99.9% uptime target
+
+---
+
+## 🗄️ **DATABASE SCHEMA STRUCTURE**
+
+### **Core Tables (Supabase PostgreSQL):**
+
+**1. User Management:**
+- `accounts` - User accounts with role and status
+  - Columns: id, email, role (enum), status (enum), created_by, approved_by
+  - Enums: user_role = 'super_admin' | 'admin' | 'staff' | 'reservist'
+  - Enums: account_status = 'pending' | 'active' | 'inactive' | 'deactivated'
+- `profiles` - User profile information
+  - Columns: id, first_name, last_name, phone, profile_photo_url
+  - Relationship: 1:1 with accounts.id
+- `staff_details` - Staff-specific data
+  - Columns: id, employee_id, position, assigned_companies (array)
+  - Relationship: 1:1 with accounts.id (where role = 'staff')
+- `reservist_details` - Reservist-specific data
+  - Columns: id, service_number, rank, company, reservist_status, date_of_birth, address
+  - Relationship: 1:1 with accounts.id (where role = 'reservist')
+  - Enums: reservist_status = 'ready' | 'standby' | 'retired'
+
+**2. Company Management:**
+- `companies` - Military companies/units
+  - Columns: id, code, name, description, is_active
+  - Standard codes: ALPHA, BRAVO, CHARLIE, HQ, SIGNAL, FAB
+
+**3. Document Management:**
+- `documents` - Document submissions and validations
+  - Columns: id, reservist_id, document_type, file_url, file_name, status, validated_by
+  - Enums: document_status = 'pending' | 'verified' | 'rejected'
+  - File storage: Supabase Storage buckets
+
+**4. Training Management:**
+- `training_sessions` - Training events
+  - Columns: id, title, scheduled_date, end_date, company, capacity, status, created_by
+  - Enums: training_status = 'scheduled' | 'ongoing' | 'completed' | 'cancelled'
+- `training_registrations` - Reservist training registrations
+  - Columns: id, reservist_id, training_session_id, status, completion_status, attended_at
+  - Enums: registration_status = 'registered' | 'attended' | 'completed' | 'cancelled' | 'no_show'
+  - Enums: completion_status = 'passed' | 'failed' | 'pending'
+
+**5. Communication:**
+- `announcements` - System-wide or company-specific announcements
+  - Columns: id, title, content, priority, target_companies (array), target_roles (array), created_by
+  - Enums: announcement_priority = 'low' | 'normal' | 'high' | 'urgent'
+- `notifications` - User notifications
+  - Columns: id, user_id, type, title, message, is_read, reference_id, action_url
+  - Enums: notification_type = 'document' | 'training' | 'announcement' | 'status_change' | 'account' | 'system'
+
+**6. Audit & Compliance:**
+- `audit_logs` - System audit trail
+  - Columns: id, user_id, action, entity_type, entity_id, old_values (JSON), new_values (JSON)
+  - Enums: audit_action = 'create' | 'update' | 'delete' | 'approve' | 'reject' | 'login' | 'logout' | 'validate'
+
+### **Database Functions (Stored Procedures):**
+- `create_account_with_profile()` - Atomic account + profile creation
+- `approve_account()` - Account approval workflow
+- `get_user_role()` - Get user's role
+- `is_super_admin()` - Check super admin privilege
+- `is_admin_or_above()` - Check admin/super admin privilege
+- `is_staff_or_above()` - Check staff/admin/super admin privilege
+
+### **Row-Level Security (RLS) Policies:**
+All tables have RLS enabled with policies for:
+- Super Admins: Full access to all data
+- Admins: Access to data within their jurisdiction
+- Staff: Access to their assigned companies only
+- Reservists: Access to their own data only
 
 ---
 
@@ -379,24 +483,26 @@ Develop a secured data management and prescriptive analytics system for the 301s
 
 ### **Data Protection:**
 - End-to-end encryption for sensitive data
-- Secure file storage for documents
-- Role-based access control (RBAC)
-- Session management and timeouts
-- Audit logging of all actions
+- **Supabase Storage** - Secure file storage with access policies
+- **Row-Level Security (RLS)** - Database-level access control per user role
+- Role-based access control (RBAC) via Supabase policies
+- Session management via Supabase Auth (JWT tokens)
+- **Audit logging** via `audit_logs` table - tracks all CRUD operations
 
 ### **Privacy Compliance:**
-- Personal data encryption (TIN, SSS, PhilHealth)
-- Limited data access per role
-- Biometric data security
-- GDPR-compliant practices
-- Data retention policies
+- Personal data stored in PostgreSQL with encryption at rest
+- Sensitive data (TIN, SSS, PhilHealth) stored with restricted RLS policies
+- Limited data access per role enforced by Supabase RLS
+- Biometric data security via Supabase Storage with signed URLs
+- Data retention policies via database triggers
+- Automatic data anonymization for deactivated accounts
 
 ### **Military Standards:**
 - Follows Executive Order No. 212 (1939)
 - Complies with Philippine Army regulations
 - Integration with ARESCOM protocols
-- Secure submission to headquarters
-- Official form validation (RIDS)
+- Secure submission to headquarters via email and database
+- Official form validation (RIDS) via TypeScript types and database constraints
 
 ---
 
@@ -834,7 +940,104 @@ It's not just a database—it's an intelligent assistant that helps military lea
 
 ---
 
-**Document Created:** March 2025  
-**For:** Centralized Reservist Management System  
-**Client:** 301st Ready Reserve Infantry Battalion  
+## 🔧 **ENVIRONMENT VARIABLES**
+
+### **Required Environment Variables:**
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Application Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NODE_ENV=development
+```
+
+### **Environment Variable Usage:**
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL (client-side)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key (client-side, RLS enforced)
+- `SUPABASE_SERVICE_ROLE_KEY` - Service role key (server-only, bypasses RLS)
+- `NEXT_PUBLIC_APP_URL` - Base application URL for redirects
+- `NODE_ENV` - Environment mode (development/production)
+
+**Security Note:** Never commit `.env.local` to version control. The service role key bypasses RLS and should be kept secure.
+
+---
+
+## 📚 **DEVELOPMENT COMMANDS**
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server with Turbopack
+npm run dev
+
+# Build for production with Turbopack
+npm run build
+
+# Start production server
+npm start
+
+# Run linting
+npm run lint
+
+# Type checking
+npx tsc --noEmit
+```
+
+---
+
+## 📂 **PROJECT STRUCTURE**
+
+```
+rribn_management_system/
+├── src/
+│   ├── app/                          # Next.js 15 App Router
+│   │   ├── (auth)/                   # Auth route group
+│   │   │   └── signin/               # Sign in page
+│   │   ├── (dashboard)/              # Dashboard route group
+│   │   │   ├── super-admin/          # Super admin pages
+│   │   │   ├── admin/                # Admin pages (future)
+│   │   │   ├── staff/                # Staff pages (future)
+│   │   │   ├── reservist/            # Reservist pages (future)
+│   │   │   └── layout.tsx            # Dashboard layout
+│   │   ├── api/                      # API routes
+│   │   │   └── admin/                # Admin API endpoints
+│   │   ├── layout.tsx                # Root layout
+│   │   └── page.tsx                  # Landing page
+│   ├── components/                   # React components
+│   │   ├── auth/                     # Auth components
+│   │   ├── dashboard/                # Dashboard components
+│   │   └── ui/                       # Reusable UI components
+│   ├── contexts/                     # React contexts
+│   │   └── AuthContext.tsx           # Auth state management
+│   ├── lib/                          # Utility libraries
+│   │   ├── supabase/                 # Supabase clients
+│   │   │   ├── client.ts             # Client-side Supabase
+│   │   │   ├── server.ts             # Server-side Supabase
+│   │   │   ├── admin.ts              # Service role client
+│   │   │   └── database.types.ts     # TypeScript types
+│   │   ├── constants/                # App constants
+│   │   ├── design-system/            # Design tokens
+│   │   └── utils/                    # Helper functions
+│   └── middleware.ts                 # Next.js middleware (auth)
+├── public/                           # Static assets
+├── DEVELOPMENT_GUIDE/                # Development documentation
+├── .env.local                        # Environment variables (git ignored)
+├── next.config.ts                    # Next.js configuration
+├── tailwind.config.ts                # Tailwind configuration
+├── tsconfig.json                     # TypeScript configuration
+└── package.json                      # Project dependencies
+```
+
+---
+
+**Document Created:** March 2025
+**Last Updated:** October 2025
+**For:** Centralized Reservist Management System
+**Client:** 301st Ready Reserve Infantry Battalion
 **Purpose:** System Overview & Understanding Guide
+**Technology Stack:** Next.js 15 + Supabase + TypeScript

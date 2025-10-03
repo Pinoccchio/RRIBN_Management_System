@@ -21,15 +21,15 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Invalid staff ID format' }, { status: 400 });
     }
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -97,15 +97,15 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Invalid staff ID format' }, { status: 400 });
     }
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
@@ -206,15 +206,15 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Invalid staff ID format' }, { status: 400 });
     }
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 

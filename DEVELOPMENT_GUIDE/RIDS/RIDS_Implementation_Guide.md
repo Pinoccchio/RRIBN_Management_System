@@ -398,10 +398,280 @@ total_active_duty = sum(all_active_duty_days)
 
 ## **DATABASE SCHEMA FOR RIDS**
 
-### **Complete MongoDB Schema**
+### **🔴 CURRENT SYSTEM: SUPABASE POSTGRESQL 🔴**
+
+> **Updated October 2025 - Next.js 15 + Supabase Architecture**
+
+The current system uses **Supabase PostgreSQL** with Row-Level Security (RLS), **NOT MongoDB**. RIDS data is stored across multiple related tables following a relational database design with proper foreign keys, constraints, and RLS policies.
+
+### **Primary Database Schema: Supabase PostgreSQL** ✅
+
+> **THIS IS THE ACTIVE SCHEMA - Use this for all RIDS development**
+
+**Implementation Status:**
+- ✅ Core `reservist_details` table exists (see `src/lib/supabase/database.types.ts`)
+- ⏳ RIDS-specific tables below are planned extensions
+- 🔄 Will be implemented progressively as features are developed
+
+```sql
+-- Main RIDS Record Table
+CREATE TABLE public.rids_records (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reservist_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  rids_id TEXT UNIQUE NOT NULL, -- e.g., RIDS-2025-12345
+  version INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'verified', 'rejected')),
+  created_date TIMESTAMPTZ DEFAULT now(),
+  last_updated TIMESTAMPTZ DEFAULT now(),
+  created_by UUID REFERENCES public.accounts(id),
+  verified_by UUID REFERENCES public.accounts(id),
+  verified_date TIMESTAMPTZ,
+
+  -- Section 1: Personnel Information (extended from reservist_details)
+  rank TEXT,
+  afpsn TEXT, -- Armed Forces Philippines Service Number
+  br_svc TEXT, -- Branch of Service
+  afpos_mos JSONB, -- { category: string, code: string }
+  source_of_commission JSONB, -- { type: string, details: string }
+  commission_details JSONB, -- { initial_rank, date_of_commission, authority }
+  reservist_classification TEXT CHECK (reservist_classification IN ('READY', 'STANDBY', 'RETIRED')),
+  mobilization_center TEXT,
+  unit_organization JSONB, -- { designation, squad, platoon, company, battalion }
+  uniform_sizing JSONB, -- { combat_shoes_size, cap_size_cm, bda_size }
+
+  -- Section 2: Personal Information (extended from profiles + reservist_details)
+  employment JSONB, -- { occupation, company_name, company_address, office_tel }
+  residential JSONB, -- { street, town_city, zip, tel, mobile }
+  personal_details JSONB, -- { birthdate, birth_place, age, religion, blood_type }
+  government_ids JSONB, -- { tin, sss_number, philhealth_number }
+  physical_info JSONB, -- { height_cm, weight_kg }
+  marital_status TEXT CHECK (marital_status IN ('Single', 'Married', 'Widow', 'Separated')),
+  sex TEXT CHECK (sex IN ('Male', 'Female')),
+  digital_presence JSONB, -- { fb_account, email_address }
+  additional_info JSONB, -- { special_skills: string[], languages: string[] }
+
+  -- Section 11: Biometrics
+  photo_url TEXT, -- Supabase Storage path
+  thumbmark_url TEXT, -- Supabase Storage path
+  signature_url TEXT, -- Supabase Storage path
+
+  -- Certification
+  is_certified BOOLEAN DEFAULT false,
+  certification_date TIMESTAMPTZ,
+
+  -- Attestation
+  attesting_personnel JSONB, -- { name, rank, position, user_id }
+  attestation_date TIMESTAMPTZ,
+  attestation_signature TEXT,
+  verification_notes TEXT,
+
+  -- Submission
+  submission_method TEXT CHECK (submission_method IN ('email', 'physical', 'online_portal')),
+  submission_date TIMESTAMPTZ,
+  submitted_to TEXT,
+  email_confirmation TEXT,
+  tracking_number TEXT,
+
+  -- File references
+  mpf_location TEXT,
+  archive_status TEXT DEFAULT 'active' CHECK (archive_status IN ('active', 'archived', 'deleted')),
+
+  CONSTRAINT rids_reservist_unique UNIQUE (reservist_id, version)
+);
+
+-- Indexes
+CREATE INDEX idx_rids_reservist ON rids_records(reservist_id);
+CREATE INDEX idx_rids_status ON rids_records(status);
+CREATE INDEX idx_rids_classification ON rids_records(reservist_classification);
+
+-- Enable RLS
+ALTER TABLE public.rids_records ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "rids_select_policy" ON public.rids_records
+  FOR SELECT USING (
+    -- Super admin sees all
+    (auth.jwt() ->> 'role')::text = 'super_admin'
+    -- Admin/Staff see RIDS in their companies
+    OR (
+      (auth.jwt() ->> 'role')::text IN ('admin', 'staff')
+      AND (unit_organization->>'company') IN (
+        SELECT unnest(assigned_companies) FROM staff_details WHERE id = auth.uid()
+      )
+    )
+    -- Reservists see their own RIDS
+    OR reservist_id = auth.uid()
+  );
+
+-- Section 3: Promotion History
+CREATE TABLE public.rids_promotion_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  entry_number INTEGER NOT NULL,
+  rank TEXT NOT NULL,
+  date_of_rank DATE NOT NULL,
+  authority TEXT NOT NULL,
+  action_type TEXT CHECK (action_type IN ('Promotion', 'Demotion', 'Initial Commission')),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  CONSTRAINT promotion_entry_unique UNIQUE (rids_record_id, entry_number)
+);
+
+-- Section 4: Military Training
+CREATE TABLE public.rids_military_training (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  training_id TEXT,
+  training_name TEXT NOT NULL,
+  school TEXT NOT NULL,
+  date_graduated DATE NOT NULL,
+  certificate_number TEXT,
+  training_category TEXT, -- Basic, Advanced, Specialized
+  duration_days INTEGER,
+  verification_status TEXT DEFAULT 'pending' CHECK (verification_status IN ('verified', 'pending', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Section 5: Awards and Decorations
+CREATE TABLE public.rids_awards (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  award_id TEXT,
+  award_name TEXT NOT NULL,
+  authority TEXT NOT NULL,
+  date_awarded DATE NOT NULL,
+  citation TEXT,
+  award_category TEXT, -- Medal, Ribbon, Certificate
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Section 6: Dependents
+CREATE TABLE public.rids_dependents (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  dependent_id TEXT,
+  relation TEXT NOT NULL CHECK (relation IN ('Spouse', 'Son', 'Daughter', 'Father', 'Mother', 'Sibling')),
+  full_name TEXT NOT NULL,
+  birthdate DATE,
+  contact_info TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Section 7: Educational Attainment
+CREATE TABLE public.rids_education (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  education_id TEXT,
+  course TEXT NOT NULL,
+  school TEXT NOT NULL,
+  date_graduated DATE NOT NULL,
+  level TEXT CHECK (level IN ('High School', 'Vocational', 'College', 'Graduate - Masters', 'Graduate - Doctorate')),
+  honors TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Section 8: Active Duty Training (CAD/OJT/ADT)
+CREATE TABLE public.rids_active_duty (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  adt_id TEXT,
+  unit TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  authority TEXT NOT NULL,
+  date_start DATE NOT NULL,
+  date_end DATE NOT NULL,
+  days_served INTEGER GENERATED ALWAYS AS (date_end - date_start + 1) STORED,
+  efficiency_report JSONB, -- { report_number, rating, evaluator, remarks }
+  verification_status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Section 9: Unit Assignment History
+CREATE TABLE public.rids_unit_assignments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  assignment_id TEXT,
+  unit TEXT NOT NULL,
+  authority TEXT NOT NULL,
+  date_from DATE NOT NULL,
+  date_to DATE,
+  is_current BOOLEAN DEFAULT false,
+  assignment_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Section 10: Designation History
+CREATE TABLE public.rids_designations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  designation_id TEXT,
+  position TEXT NOT NULL,
+  authority TEXT NOT NULL,
+  date_from DATE NOT NULL,
+  date_to DATE,
+  is_current BOOLEAN DEFAULT false,
+  responsibilities TEXT[],
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Supporting Documents
+CREATE TABLE public.rids_supporting_documents (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  document_type TEXT NOT NULL,
+  file_url TEXT NOT NULL, -- Supabase Storage path
+  file_name TEXT NOT NULL,
+  upload_date TIMESTAMPTZ DEFAULT now(),
+  verified BOOLEAN DEFAULT false,
+  verified_by UUID REFERENCES public.accounts(id),
+  verified_date TIMESTAMPTZ
+);
+
+-- Audit Trail for RIDS
+CREATE TABLE public.rids_audit_trail (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  rids_record_id UUID NOT NULL REFERENCES public.rids_records(id) ON DELETE CASCADE,
+  action TEXT NOT NULL, -- Created, Updated, Verified, Rejected
+  performed_by UUID REFERENCES public.accounts(id),
+  timestamp TIMESTAMPTZ DEFAULT now(),
+  changes_made JSONB,
+  reason TEXT
+);
+
+-- TypeScript Type Definition (for reference)
+-- See src/lib/supabase/database.types.ts for actual types
+```
+
+### **Migration from Current Schema:**
+
+The current system has a basic `reservist_details` table. When implementing full RIDS:
+1. Extend `reservist_details` or create `rids_records` table
+2. Migrate existing reservist data to RIDS format
+3. Implement related tables for history tracking
+4. Set up Supabase Storage buckets for biometric files
+5. Configure RLS policies for all RIDS tables
+
+### **⚠️ DEPRECATED: Legacy MongoDB Schema (For Reference Only) ⚠️**
+
+> **🔴 DO NOT USE THIS SCHEMA 🔴**
+>
+> This MongoDB schema is **DEPRECATED** and kept for historical reference only.
+>
+> **Current System Uses:**
+> - **Database**: Supabase PostgreSQL (see Primary Database Schema above)
+> - **Backend**: Next.js 15 API Routes (NOT Express.js)
+> - **Frontend**: Next.js 15 with React Server Components
+> - **Auth**: Supabase Auth with Row-Level Security (RLS)
+> - **File Storage**: Supabase Storage (NOT local filesystem)
+>
+> **For all new RIDS development, use the Supabase PostgreSQL schema defined above.**
 
 ```javascript
-const RIDSSchema = {
+// ⚠️ WARNING: This is the OLD MongoDB schema - NOT USED in current system
+// Current system uses Supabase PostgreSQL (see SQL schema above)
+// Last updated: Pre-October 2025 (deprecated)
+const RIDSSchema_LEGACY = {
   // Document Metadata
   rids_id: String, // Unique RIDS identifier
   version: Number, // Document version for tracking updates
@@ -1026,37 +1296,217 @@ The system should generate a PDF that matches the original RIDS form layout:
 
 ---
 
-## **API ENDPOINTS FOR RIDS**
+## **API ENDPOINTS FOR RIDS (Next.js 15 API Routes)**
+
+### **🔴 CURRENT IMPLEMENTATION - Updated October 2025 🔴**
+
+> **Technology Stack:**
+> - **Framework**: Next.js 15 with App Router
+> - **API Pattern**: Route Handlers (`src/app/api/rids/*/route.ts`)
+> - **Database**: Supabase PostgreSQL
+> - **Auth**: Supabase Auth + Middleware protection
+> - **Authorization**: Row-Level Security (RLS) policies
+> - **File Uploads**: Supabase Storage buckets
+
+### **API Route Structure:**
+All RIDS routes are in: `src/app/api/rids/`
 
 ### **RIDS Management Endpoints**
 
-```
-POST   /api/rids/create          - Create new RIDS
-GET    /api/rids/:rids_id        - Get RIDS by ID
-PUT    /api/rids/:rids_id        - Update RIDS
-DELETE /api/rids/:rids_id        - Delete RIDS (soft delete)
-GET    /api/rids/search          - Search RIDS with filters
-GET    /api/rids/company/:company - Get all RIDS by company
-POST   /api/rids/:rids_id/verify - Verify RIDS (Admin)
-POST   /api/rids/:rids_id/reject - Reject RIDS with notes
-GET    /api/rids/:rids_id/pdf    - Export RIDS as PDF
-POST   /api/rids/bulk-export     - Export multiple RIDS
-GET    /api/rids/pending         - Get pending verifications
-POST   /api/rids/:rids_id/submit - Submit RIDS to email
+```typescript
+// Create new RIDS
+POST /api/rids
+Body: { reservist_id: string, ...rids_data }
+Returns: { id: string, rids_id: string }
+
+// Get RIDS by ID
+GET /api/rids/[id]
+Returns: { ...rids_record, related_data: {...} }
+
+// Update RIDS
+PUT /api/rids/[id]
+Body: { ...updated_fields }
+Returns: { success: boolean, updated_record: {...} }
+
+// Soft delete RIDS
+DELETE /api/rids/[id]
+Returns: { success: boolean }
+
+// Search RIDS with filters
+GET /api/rids/search?status=draft&company=ALPHA&rank=Captain
+Returns: { data: [...], count: number }
+
+// Get all RIDS by company
+GET /api/rids/company/[code]
+Returns: { data: [...], count: number }
+
+// Verify RIDS (Admin/Staff only)
+POST /api/rids/[id]/verify
+Body: { verification_notes?: string }
+Returns: { success: boolean }
+
+// Reject RIDS with notes
+POST /api/rids/[id]/reject
+Body: { rejection_reason: string }
+Returns: { success: boolean }
+
+// Export RIDS as PDF
+GET /api/rids/[id]/pdf
+Returns: PDF file (Content-Type: application/pdf)
+
+// Bulk export RIDS
+POST /api/rids/bulk-export
+Body: { rids_ids: string[] }
+Returns: ZIP file with multiple PDFs
+
+// Get pending verifications
+GET /api/rids/pending?company=ALPHA
+Returns: { data: [...], count: number }
+
+// Submit RIDS to email
+POST /api/rids/[id]/submit
+Body: { email: string, cc?: string[] }
+Returns: { success: boolean, email_sent: boolean }
 ```
 
 ### **RIDS Section Endpoints**
 
+```typescript
+// Update personnel information
+PUT /api/rids/[id]/personnel-info
+Body: { rank, afpsn, unit_organization, ... }
+
+// Update personal information
+PUT /api/rids/[id]/personal-info
+Body: { employment, residential, personal_details, ... }
+
+// Add promotion record
+POST /api/rids/[id]/promotion-history
+Body: { rank, date_of_rank, authority, action_type }
+
+// Add training record
+POST /api/rids/[id]/military-training
+Body: { training_name, school, date_graduated, ... }
+
+// Add award
+POST /api/rids/[id]/awards
+Body: { award_name, authority, date_awarded, ... }
+
+// Add dependent
+POST /api/rids/[id]/dependents
+Body: { relation, full_name, birthdate, ... }
+
+// Add education record
+POST /api/rids/[id]/education
+Body: { course, school, date_graduated, level }
+
+// Add active duty record
+POST /api/rids/[id]/active-duty
+Body: { unit, purpose, date_start, date_end, efficiency_report }
+
+// Upload biometric files (Supabase Storage)
+POST /api/rids/[id]/biometrics
+FormData: { photo: File, thumbmark: File, signature: File }
+Returns: { photo_url, thumbmark_url, signature_url }
 ```
-PUT /api/rids/:rids_id/personnel-info      - Update section 1
-PUT /api/rids/:rids_id/personal-info       - Update section 2
-POST /api/rids/:rids_id/promotion-history  - Add promotion record
-POST /api/rids/:rids_id/military-training  - Add training record
-POST /api/rids/:rids_id/awards             - Add award record
-POST /api/rids/:rids_id/dependents         - Add dependent
-POST /api/rids/:rids_id/education          - Add education record
-POST /api/rids/:rids_id/active-duty        - Add active duty record
-POST /api/rids/:rids_id/biometrics         - Upload biometric files
+
+### **Implementation Example (Next.js 15):**
+
+```typescript
+// src/app/api/rids/[id]/route.ts
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const supabase = await createClient();
+
+  // RLS automatically enforces access control
+  const { data: rids, error } = await supabase
+    .from('rids_records')
+    .select(`
+      *,
+      promotion_history:rids_promotion_history(*),
+      trainings:rids_military_training(*),
+      awards:rids_awards(*),
+      dependents:rids_dependents(*),
+      education:rids_education(*),
+      active_duty:rids_active_duty(*),
+      unit_assignments:rids_unit_assignments(*),
+      designations:rids_designations(*)
+    `)
+    .eq('id', params.id)
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+
+  return NextResponse.json(rids);
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const supabase = await createClient();
+  const body = await request.json();
+
+  const { data, error } = await supabase
+    .from('rids_records')
+    .update({
+      ...body,
+      last_updated: new Date().toISOString(),
+    })
+    .eq('id', params.id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true, data });
+}
+```
+
+### **Supabase Storage for Biometric Files:**
+
+```typescript
+// Upload biometric file example
+async function uploadBiometric(
+  ridsId: string,
+  file: File,
+  type: 'photo' | 'thumbmark' | 'signature'
+) {
+  const supabase = await createClient();
+
+  // Upload to Supabase Storage
+  const fileName = `${ridsId}-${type}-${Date.now()}.${file.name.split('.').pop()}`;
+  const { data, error } = await supabase.storage
+    .from('rids-biometrics')
+    .upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  // Get public URL (or signed URL for private buckets)
+  const { data: { publicUrl } } = supabase.storage
+    .from('rids-biometrics')
+    .getPublicUrl(fileName);
+
+  // Update RIDS record
+  await supabase
+    .from('rids_records')
+    .update({ [`${type}_url`]: publicUrl })
+    .eq('id', ridsId);
+
+  return publicUrl;
+}
 ```
 
 ---
@@ -1153,7 +1603,8 @@ This forms the foundation of your reservist management system and feeds data int
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** March 2025  
-**Based on:** Philippine Army RIDS Form (s2019)  
+**Document Version:** 2.0
+**Last Updated:** October 2025
+**Based on:** Philippine Army RIDS Form (s2019)
 **For:** Centralize Reservist Management System - 301st Community Defense Center
+**Technology Stack:** Next.js 15 + Supabase PostgreSQL (updated from MongoDB)

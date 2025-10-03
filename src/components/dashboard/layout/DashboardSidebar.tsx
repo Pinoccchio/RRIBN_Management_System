@@ -18,8 +18,9 @@ import {
   Bell,
   FileCheck,
   Megaphone,
-  ChevronLeft,
-  ChevronRight,
+  Eye,
+  Building2,
+  BarChart3,
 } from 'lucide-react';
 
 // Icon mapping
@@ -36,6 +37,9 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Bell,
   FileCheck,
   Megaphone,
+  Eye,
+  Building2,
+  BarChart3,
 };
 
 interface DashboardSidebarProps {
@@ -149,23 +153,6 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               })}
             </div>
           </nav>
-
-          {/* Collapse Toggle Button */}
-          <div className="p-3 border-t border-yellow-500/20">
-            <button
-              onClick={onToggle}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-navy-800 rounded-lg transition-colors"
-            >
-              {isCollapsed ? (
-                <ChevronRight className="w-5 h-5" />
-              ) : (
-                <>
-                  <ChevronLeft className="w-5 h-5" />
-                  <span className="text-sm font-medium">Collapse</span>
-                </>
-              )}
-            </button>
-          </div>
         </div>
       </aside>
 

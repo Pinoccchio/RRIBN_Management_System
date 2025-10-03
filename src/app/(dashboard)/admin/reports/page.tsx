@@ -1,20 +1,14 @@
 import React from 'react';
 import { PageHeader } from '@/components/dashboard/shared/PageHeader';
-import { Button } from '@/components/ui/Button';
 
 export default function ReportsPage() {
   return (
     <div>
       <PageHeader
-        title="Reports & Analytics"
-        description="Generate comprehensive system reports and analytics across all operations."
-        action={
-          <Button variant="primary" size="md">
-            + Generate Report
-          </Button>
-        }
+        title="Reports"
+        description="Battalion-wide reports and analytics"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/super-admin' },
+          { label: 'Dashboard', href: '/admin' },
           { label: 'Reports' },
         ]}
       />
@@ -26,12 +20,12 @@ export default function ReportsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Reports & Analytics</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Battalion Reports</h3>
           <p className="text-gray-600 mb-6">
-            This page will contain comprehensive reporting tools including readiness reports, company statistics, training analytics, and custom report generation.
+            Generate and view comprehensive battalion reports including personnel status, training compliance, document validation, and operational readiness across all companies.
           </p>
           <div className="text-sm text-gray-500">
-            Coming soon: Generate and export system-wide reports
+            Coming soon: Battalion reports
           </div>
         </div>
       </div>

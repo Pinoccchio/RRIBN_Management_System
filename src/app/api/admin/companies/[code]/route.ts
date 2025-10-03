@@ -6,31 +6,32 @@ import type { Company, UpdateCompanyInput } from '@/lib/types/staff';
 /**
  * PATCH /api/admin/companies/[code]
  * Update an existing company
- * Restricted to super_admin only (RLS policy: super_admin_modify_companies)
+ * Restricted to admin and super_admin (RLS policy: admin_and_super_admin_manage_companies)
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createClient();
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
       return NextResponse.json({
         success: false,
-        error: 'Forbidden: Only super administrators can update companies'
+        error: 'Forbidden: Only administrators can update companies'
       }, { status: 403 });
     }
 
-    const code = params.code.toUpperCase();
+    const { code: rawCode } = await params;
+    const code = rawCode.toUpperCase();
 
     // Get existing company for audit log
     const { data: existingCompany, error: fetchError } = await supabase
@@ -129,31 +130,32 @@ export async function PATCH(
 /**
  * DELETE /api/admin/companies/[code]
  * Soft delete a company (set is_active = false)
- * Restricted to super_admin only (RLS policy: super_admin_modify_companies)
+ * Restricted to admin and super_admin (RLS policy: admin_and_super_admin_manage_companies)
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
     const supabase = await createClient();
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
       return NextResponse.json({
         success: false,
-        error: 'Forbidden: Only super administrators can delete companies'
+        error: 'Forbidden: Only administrators can delete companies'
       }, { status: 403 });
     }
 
-    const code = params.code.toUpperCase();
+    const { code: rawCode } = await params;
+    const code = rawCode.toUpperCase();
 
     // Get existing company
     const { data: existingCompany, error: fetchError } = await supabase

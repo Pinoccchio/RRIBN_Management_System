@@ -16,30 +16,30 @@ export default function SuperAdminDashboard() {
       color: 'primary',
     },
     {
-      label: 'Total Staff',
-      value: '48',
-      change: 5.4,
+      label: 'System Health',
+      value: '98%',
+      change: 2.4,
+      changeLabel: 'from last week',
+      icon: 'Activity',
+      trend: 'up',
+      color: 'success',
+    },
+    {
+      label: 'Total Users',
+      value: '1,294',
+      change: 5.1,
       changeLabel: 'from last month',
       icon: 'Users',
       trend: 'up',
       color: 'info',
     },
     {
-      label: 'Total Reservists',
-      value: '1,234',
-      change: -2.1,
-      changeLabel: 'from last month',
+      label: 'Security Status',
+      value: 'Secure',
+      change: 0,
+      changeLabel: 'All systems operational',
       icon: 'Shield',
-      trend: 'down',
-      color: 'success',
-    },
-    {
-      label: 'Active Trainings',
-      value: '18',
-      change: 12.5,
-      changeLabel: 'from last month',
-      icon: 'GraduationCap',
-      trend: 'up',
+      trend: 'neutral',
       color: 'warning',
     },
   ];
@@ -48,7 +48,7 @@ export default function SuperAdminDashboard() {
     <div>
       <PageHeader
         title="Dashboard"
-        description="Welcome to the Super Administrator dashboard. Monitor and manage all system operations."
+        description="Monitor system health and manage administrator accounts"
       />
 
       {/* Stats Grid */}
@@ -62,7 +62,10 @@ export default function SuperAdminDashboard() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
         <h2 className="text-xl font-bold text-navy-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left group">
+          <a
+            href="/super-admin/administrators"
+            className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left group"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
                 <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,23 +77,29 @@ export default function SuperAdminDashboard() {
                 <p className="text-sm text-gray-600">Add new admin account</p>
               </div>
             </div>
-          </button>
+          </a>
 
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left group">
+          <a
+            href="/super-admin/analytics"
+            className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left group"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-navy-900">Add Staff Member</h3>
-                <p className="text-sm text-gray-600">Create staff account</p>
+                <h3 className="font-semibold text-navy-900">View Analytics</h3>
+                <p className="text-sm text-gray-600">System metrics</p>
               </div>
             </div>
-          </button>
+          </a>
 
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left group">
+          <a
+            href="/super-admin/audit-logs"
+            className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all text-left group"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
                 <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,11 +107,11 @@ export default function SuperAdminDashboard() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-navy-900">Generate Report</h3>
-                <p className="text-sm text-gray-600">System-wide analytics</p>
+                <h3 className="font-semibold text-navy-900">View Audit Logs</h3>
+                <p className="text-sm text-gray-600">System activity</p>
               </div>
             </div>
-          </button>
+          </a>
         </div>
       </div>
 
@@ -119,7 +128,7 @@ export default function SuperAdminDashboard() {
               </div>
               <div className="flex-1">
                 <p className="text-sm text-gray-900">
-                  <span className="font-semibold">Admin User {item}</span> created a new staff account for Alpha Company
+                  <span className="font-semibold">Admin User {item}</span> created a new administrator account
                 </p>
                 <p className="text-xs text-gray-500 mt-1">{item} minutes ago</p>
               </div>

@@ -50,24 +50,24 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/admin/companies
  * Create a new company
- * Restricted to super_admin only (RLS policy: super_admin_modify_companies)
+ * Restricted to admin and super_admin (RLS policy: admin_and_super_admin_manage_companies)
  */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
       return NextResponse.json({
         success: false,
-        error: 'Forbidden: Only super administrators can create companies'
+        error: 'Forbidden: Only administrators can create companies'
       }, { status: 403 });
     }
 

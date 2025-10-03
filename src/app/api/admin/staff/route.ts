@@ -12,16 +12,16 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
-      return NextResponse.json({ success: false, error: 'Forbidden: Only super administrators can access this resource' }, { status: 403 });
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
+      return NextResponse.json({ success: false, error: 'Forbidden: Only administrators can access this resource' }, { status: 403 });
     }
 
     // Get query parameters
@@ -123,16 +123,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const adminClient = createAdminClient();
 
-    // Check if user is authenticated and is super_admin
+    // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is super_admin
-    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
-    if (!isSuperAdmin) {
-      return NextResponse.json({ success: false, error: 'Forbidden: Only super administrators can create staff accounts' }, { status: 403 });
+    // Verify user is admin or super_admin
+    const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
+    if (!isAdminOrAbove) {
+      return NextResponse.json({ success: false, error: 'Forbidden: Only administrators can create staff accounts' }, { status: 403 });
     }
 
     // Parse and validate request body

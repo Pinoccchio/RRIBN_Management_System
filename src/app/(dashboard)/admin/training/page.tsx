@@ -1,20 +1,14 @@
 import React from 'react';
 import { PageHeader } from '@/components/dashboard/shared/PageHeader';
-import { Button } from '@/components/ui/Button';
 
 export default function TrainingPage() {
   return (
     <div>
       <PageHeader
-        title="Training Management"
-        description="System-wide training schedule, capacity management, and participation tracking."
-        action={
-          <Button variant="primary" size="md">
-            + Schedule Training
-          </Button>
-        }
+        title="Training"
+        description="Manage training sessions and programs"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/super-admin' },
+          { label: 'Dashboard', href: '/admin' },
           { label: 'Training' },
         ]}
       />
@@ -28,10 +22,10 @@ export default function TrainingPage() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Training Management</h3>
           <p className="text-gray-600 mb-6">
-            This page will contain training management features including scheduling, capacity limits, prerequisite management, and participation tracking.
+            Create system-wide training sessions, manage attendance, track completion status, and monitor training requirements across all companies.
           </p>
           <div className="text-sm text-gray-500">
-            Coming soon: Create, modify, and monitor all training sessions
+            Coming soon: Training management
           </div>
         </div>
       </div>

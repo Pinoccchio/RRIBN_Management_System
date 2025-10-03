@@ -5,10 +5,10 @@ export default function ReservistsPage() {
   return (
     <div>
       <PageHeader
-        title="Reservist Oversight"
-        description="Full oversight of all reservist records, status, and documents across companies."
+        title="Reservists"
+        description="Manage and approve reservist accounts"
         breadcrumbs={[
-          { label: 'Dashboard', href: '/super-admin' },
+          { label: 'Dashboard', href: '/admin' },
           { label: 'Reservists' },
         ]}
       />
@@ -22,10 +22,10 @@ export default function ReservistsPage() {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Reservist Management</h3>
           <p className="text-gray-600 mb-6">
-            This page will contain comprehensive reservist oversight including status monitoring, document validation, and company assignments.
+            View all battalion reservists, approve pending accounts, manage status, and oversee assignments across all companies.
           </p>
           <div className="text-sm text-gray-500">
-            Coming soon: View, monitor, and manage all reservist records
+            Coming soon: Manage reservists
           </div>
         </div>
       </div>

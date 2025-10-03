@@ -32,7 +32,7 @@ export default function DashboardLayout({
   const handleSignOut = async () => {
     logger.info('Dashboard sign out initiated');
     await signOut();
-    router.push('/');
+    router.push('/signin');
   };
 
   // Prepare user data for header (or loading state)
