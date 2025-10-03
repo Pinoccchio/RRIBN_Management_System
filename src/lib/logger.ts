@@ -142,6 +142,35 @@ class Logger {
     this.error(errorMessage, error, { email });
   }
 
+  // Sign-out specific logging methods
+  signOutStart(role: string, email?: string, userId?: string): void {
+    this.separator();
+    this.auth(`🚪 SIGN OUT INITIATED - ${role.toUpperCase()} Dashboard`, { email, userId });
+  }
+
+  signOutStep(step: string, context?: string): void {
+    this.info(`  └─ ${step}`, { context: context || 'SIGN_OUT' });
+  }
+
+  signOutSuccess(context?: string): void {
+    this.success('✅ Sign out completed successfully', { context: context || 'SIGN_OUT' });
+    this.separator();
+  }
+
+  signOutError(message: string, error?: unknown, context?: string): void {
+    this.error(`❌ SIGN OUT ERROR: ${message}`, error, { context: context || 'SIGN_OUT' });
+    this.separator();
+  }
+
+  // UI event logging
+  clickEvent(element: string, action: string, context?: string): void {
+    this.debug(`🖱️ CLICK: ${element} - ${action}`, { context });
+  }
+
+  stateChange(component: string, from: string, to: string): void {
+    this.debug(`🔄 STATE: ${component} changed from "${from}" to "${to}"`, { context: 'STATE' });
+  }
+
   // Database operation logging
   dbQuery(operation: string, table: string, details?: string): void {
     const message = `${operation} on ${table}${details ? ': ' + details : ''}`;

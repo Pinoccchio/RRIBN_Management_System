@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isValidEmail, sanitizeInput } from '@/lib/utils/validation';
+import { logger } from '@/lib/logger';
 import type { CreateStaffInput, StaffMember, PaginatedResponse, StaffFilters } from '@/lib/types/staff';
 
 /**
@@ -9,20 +10,36 @@ import type { CreateStaffInput, StaffMember, PaginatedResponse, StaffFilters } f
  * List all staff members with filtering and pagination
  */
 export async function GET(request: NextRequest) {
+  logger.separator();
+  logger.info('API Request', { context: 'GET /api/admin/staff' });
+
   try {
     const supabase = await createClient();
 
     // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'GET /api/admin/staff' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'GET /api/admin/staff',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is admin or super_admin
     const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
     if (!isAdminOrAbove) {
+      logger.warn('Insufficient permissions - Admin role required', {
+        context: 'GET /api/admin/staff',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden: Only administrators can access this resource' }, { status: 403 });
     }
+
+    logger.success('Authorization successful', { context: 'GET /api/admin/staff', userId: user.id });
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -33,6 +50,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
+
+    logger.debug(`Filters: status=${status}, company=${company}, search=${search}, page=${page}`, {
+      context: 'GET /api/admin/staff'
+    });
 
     // Build query using the pre-joined view
     let query = supabase
@@ -61,12 +82,15 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1;
     query = query.range(from, to);
 
+    logger.dbQuery('SELECT', 'staff_accounts_with_details', `Fetching staff list (page ${page})`);
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching staff:', error);
+      logger.dbError('SELECT', 'staff_accounts_with_details', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch staff' }, { status: 500 });
     }
+
+    logger.dbSuccess('SELECT', 'staff_accounts_with_details');
 
     // Transform data from flat view structure to nested StaffMember type
     const staff: StaffMember[] = (data || []).map((staffMember: any) => ({
@@ -107,9 +131,15 @@ export async function GET(request: NextRequest) {
       },
     };
 
+    logger.success(`Fetched ${staff.length} staff members (total: ${count})`, {
+      context: 'GET /api/admin/staff'
+    });
+    logger.separator();
+
     return NextResponse.json({ success: true, ...response });
   } catch (error) {
-    console.error('Error in GET /api/admin/staff:', error);
+    logger.error('Unexpected API error', error, { context: 'GET /api/admin/staff' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -119,6 +149,9 @@ export async function GET(request: NextRequest) {
  * Create a new staff account
  */
 export async function POST(request: NextRequest) {
+  logger.separator();
+  logger.info('API Request', { context: 'POST /api/admin/staff' });
+
   try {
     const supabase = await createClient();
     const adminClient = createAdminClient();
@@ -126,17 +159,31 @@ export async function POST(request: NextRequest) {
     // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'POST /api/admin/staff' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'POST /api/admin/staff',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is admin or super_admin
     const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
     if (!isAdminOrAbove) {
+      logger.warn('Insufficient permissions - Admin role required', {
+        context: 'POST /api/admin/staff',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden: Only administrators can create staff accounts' }, { status: 403 });
     }
 
+    logger.success('Authorization successful', { context: 'POST /api/admin/staff', userId: user.id });
+
     // Parse and validate request body
     const body: CreateStaffInput = await request.json();
+    logger.debug(`Creating staff account for: ${body.email}`, { context: 'POST /api/admin/staff' });
 
     // Validate required fields
     if (!body.email || !body.firstName || !body.lastName || !body.password) {
@@ -163,6 +210,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
+    logger.dbQuery('SELECT', 'accounts', `Checking if email exists: ${email}`);
     const { data: existingAccount } = await supabase
       .from('accounts')
       .select('id')
@@ -170,10 +218,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingAccount) {
+      logger.warn('Account creation failed - Email already exists', {
+        context: 'POST /api/admin/staff',
+        email
+      });
       return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 409 });
     }
+    logger.dbSuccess('SELECT', 'accounts');
 
     // Create Supabase Auth user (using admin client to bypass email confirmation)
+    logger.info(`Creating Auth user for: ${email}`, { context: 'POST /api/admin/staff' });
     const { data: authData, error: authUserError } = await adminClient.auth.admin.createUser({
       email,
       password: body.password,
@@ -186,11 +240,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (authUserError || !authData.user) {
-      console.error('Error creating auth user:', authUserError);
+      logger.error('Auth user creation failed', authUserError, {
+        context: 'POST /api/admin/staff',
+        email
+      });
       return NextResponse.json({ success: false, error: 'Failed to create authentication account' }, { status: 500 });
     }
+    logger.success(`Auth user created - ID: ${authData.user.id}`, { context: 'POST /api/admin/staff', email });
 
     // Create database records using our function
+    logger.dbQuery('FUNCTION', 'create_staff_account_with_details', `Creating staff account for ${body.firstName} ${body.lastName}`);
     const { data: accountId, error: dbError } = await supabase.rpc('create_staff_account_with_details', {
       p_auth_user_id: authData.user.id,
       p_email: email,
@@ -205,15 +264,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (dbError) {
-      console.error('Error creating database records:', dbError);
+      logger.dbError('FUNCTION', 'create_staff_account_with_details', dbError);
+      logger.warn('Rolling back - Deleting Auth user', {
+        context: 'POST /api/admin/staff',
+        authUserId: authData.user.id
+      });
 
       // Rollback: Delete the auth user if database creation failed
       await adminClient.auth.admin.deleteUser(authData.user.id);
+      logger.info('Auth user deleted successfully (rollback)', { context: 'POST /api/admin/staff' });
 
       return NextResponse.json({ success: false, error: 'Failed to create staff account' }, { status: 500 });
     }
+    logger.dbSuccess('FUNCTION', 'create_staff_account_with_details');
 
     // Fetch the created staff member with profile and staff_details
+    logger.dbQuery('SELECT', 'accounts', 'Fetching created staff member with details');
     const { data: newStaff } = await supabase
       .from('accounts')
       .select(`
@@ -225,8 +291,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!newStaff) {
+      logger.error('Failed to fetch created staff member', null, { context: 'POST /api/admin/staff', authUserId: authData.user.id });
       return NextResponse.json({ success: false, error: 'Failed to fetch created staff member' }, { status: 500 });
     }
+    logger.dbSuccess('SELECT', 'accounts');
 
     const staffMember: StaffMember = {
       id: newStaff.id,
@@ -252,6 +320,12 @@ export async function POST(request: NextRequest) {
       },
     };
 
+    logger.success(`Staff account created successfully - ${body.firstName} ${body.lastName} (${email})`, {
+      context: 'POST /api/admin/staff',
+      staffId: newStaff.id
+    });
+    logger.separator();
+
     return NextResponse.json({
       success: true,
       data: {
@@ -260,7 +334,8 @@ export async function POST(request: NextRequest) {
       message: 'Staff account created successfully',
     }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/staff:', error);
+    logger.error('Unexpected API error', error, { context: 'POST /api/admin/staff' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isValidEmail, sanitizeInput } from '@/lib/utils/validation';
+import { logger } from '@/lib/logger';
 import type { CreateAdministratorInput, Administrator, PaginatedResponse, AdministratorFilters } from '@/lib/types/administrator';
 
 /**
@@ -9,20 +10,36 @@ import type { CreateAdministratorInput, Administrator, PaginatedResponse, Admini
  * List all administrators with filtering and pagination
  */
 export async function GET(request: NextRequest) {
+  logger.separator();
+  logger.info('API Request', { context: 'GET /api/admin/administrators' });
+
   try {
     const supabase = await createClient();
 
     // Check if user is authenticated and is super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'GET /api/admin/administrators' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'GET /api/admin/administrators',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is super_admin
     const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
     if (!isSuperAdmin) {
+      logger.warn('Insufficient permissions - Super Admin role required', {
+        context: 'GET /api/admin/administrators',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden: Only super administrators can access this resource' }, { status: 403 });
     }
+
+    logger.success('Authorization successful', { context: 'GET /api/admin/administrators', userId: user.id });
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -33,6 +50,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
+
+    logger.debug(`Filters: role=${role}, status=${status}, search=${search}, page=${page}`, {
+      context: 'GET /api/admin/administrators'
+    });
 
     // Build query using the pre-joined view
     let query = supabase
@@ -60,12 +81,15 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1;
     query = query.range(from, to);
 
+    logger.dbQuery('SELECT', 'admin_accounts_with_details', `Fetching administrators list (page ${page})`);
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching administrators:', error);
+      logger.dbError('SELECT', 'admin_accounts_with_details', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch administrators' }, { status: 500 });
     }
+
+    logger.dbSuccess('SELECT', 'admin_accounts_with_details');
 
     // Transform data from flat view structure to nested Administrator type
     const administrators: Administrator[] = (data || []).map((admin: any) => ({
@@ -101,9 +125,15 @@ export async function GET(request: NextRequest) {
       },
     };
 
+    logger.success(`Fetched ${administrators.length} administrators (total: ${count})`, {
+      context: 'GET /api/admin/administrators'
+    });
+    logger.separator();
+
     return NextResponse.json({ success: true, ...response });
   } catch (error) {
-    console.error('Error in GET /api/admin/administrators:', error);
+    logger.error('Unexpected API error', error, { context: 'GET /api/admin/administrators' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -113,6 +143,9 @@ export async function GET(request: NextRequest) {
  * Create a new administrator account
  */
 export async function POST(request: NextRequest) {
+  logger.separator();
+  logger.info('API Request', { context: 'POST /api/admin/administrators' });
+
   try {
     const supabase = await createClient();
     const adminClient = createAdminClient();
@@ -120,20 +153,35 @@ export async function POST(request: NextRequest) {
     // Check if user is authenticated and is super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'POST /api/admin/administrators' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'POST /api/admin/administrators',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is super_admin
     const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
     if (!isSuperAdmin) {
+      logger.warn('Insufficient permissions - Super Admin role required', {
+        context: 'POST /api/admin/administrators',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden: Only super administrators can create admin accounts' }, { status: 403 });
     }
 
+    logger.success('Authorization successful', { context: 'POST /api/admin/administrators', userId: user.id });
+
     // Parse and validate request body
     const body: CreateAdministratorInput = await request.json();
+    logger.debug(`Creating administrator account for: ${body.email}`, { context: 'POST /api/admin/administrators' });
 
     // Validate required fields
     if (!body.email || !body.firstName || !body.lastName || !body.role || !body.password) {
+      logger.warn('Missing required fields', { context: 'POST /api/admin/administrators' });
       return NextResponse.json({
         success: false,
         error: 'Missing required fields: email, firstName, lastName, role, password'
@@ -143,20 +191,24 @@ export async function POST(request: NextRequest) {
     // Validate email format
     const email = sanitizeInput(body.email.toLowerCase());
     if (!isValidEmail(email)) {
+      logger.warn('Invalid email format', { context: 'POST /api/admin/administrators', email });
       return NextResponse.json({ success: false, error: 'Invalid email format' }, { status: 400 });
     }
 
     // Validate role
     if (!['admin', 'super_admin'].includes(body.role)) {
+      logger.warn('Invalid role', { context: 'POST /api/admin/administrators', role: body.role });
       return NextResponse.json({ success: false, error: 'Invalid role. Must be admin or super_admin' }, { status: 400 });
     }
 
     // Validate password
     if (body.password.length < 8) {
+      logger.warn('Password too short', { context: 'POST /api/admin/administrators' });
       return NextResponse.json({ success: false, error: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
     // Check if email already exists
+    logger.dbQuery('SELECT', 'accounts', `Checking if email exists: ${email}`);
     const { data: existingAccount } = await supabase
       .from('accounts')
       .select('id')
@@ -164,10 +216,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingAccount) {
+      logger.warn('Account creation failed - Email already exists', {
+        context: 'POST /api/admin/administrators',
+        email
+      });
       return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 409 });
     }
+    logger.dbSuccess('SELECT', 'accounts');
 
     // Create Supabase Auth user (using admin client to bypass email confirmation)
+    logger.info(`Creating Auth user for: ${email}`, { context: 'POST /api/admin/administrators' });
     const { data: authData, error: authUserError } = await adminClient.auth.admin.createUser({
       email,
       password: body.password,
@@ -180,11 +238,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (authUserError || !authData.user) {
-      console.error('Error creating auth user:', authUserError);
+      logger.error('Auth user creation failed', authUserError, {
+        context: 'POST /api/admin/administrators',
+        email
+      });
       return NextResponse.json({ success: false, error: 'Failed to create authentication account' }, { status: 500 });
     }
+    logger.success(`Auth user created - ID: ${authData.user.id}`, { context: 'POST /api/admin/administrators', email });
 
     // Create database records using our function
+    logger.dbQuery('FUNCTION', 'create_admin_account_with_details', `Creating admin account for ${body.firstName} ${body.lastName}`);
     const { data: accountId, error: dbError } = await supabase.rpc('create_admin_account_with_details', {
       p_auth_user_id: authData.user.id,
       p_email: email,
@@ -197,15 +260,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (dbError) {
-      console.error('Error creating database records:', dbError);
+      logger.dbError('FUNCTION', 'create_admin_account_with_details', dbError);
+      logger.warn('Rolling back - Deleting Auth user', {
+        context: 'POST /api/admin/administrators',
+        authUserId: authData.user.id
+      });
 
       // Rollback: Delete the auth user if database creation failed
       await adminClient.auth.admin.deleteUser(authData.user.id);
+      logger.info('Auth user deleted successfully (rollback)', { context: 'POST /api/admin/administrators' });
 
       return NextResponse.json({ success: false, error: 'Failed to create administrator account' }, { status: 500 });
     }
+    logger.dbSuccess('FUNCTION', 'create_admin_account_with_details');
 
     // Fetch the created administrator with profile
+    logger.dbQuery('SELECT', 'accounts', 'Fetching created administrator with details');
     const { data: newAdmin } = await supabase
       .from('accounts')
       .select(`
@@ -216,8 +286,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!newAdmin) {
+      logger.error('Failed to fetch created administrator', null, { context: 'POST /api/admin/administrators', authUserId: authData.user.id });
       return NextResponse.json({ success: false, error: 'Failed to fetch created administrator' }, { status: 500 });
     }
+    logger.dbSuccess('SELECT', 'accounts');
 
     const administrator: Administrator = {
       id: newAdmin.id,
@@ -238,6 +310,12 @@ export async function POST(request: NextRequest) {
       },
     };
 
+    logger.success(`Administrator account created successfully: ${body.firstName} ${body.lastName} (${email}) - Role: ${body.role}`, {
+      context: 'POST /api/admin/administrators',
+      adminId: newAdmin.id
+    });
+    logger.separator();
+
     return NextResponse.json({
       success: true,
       data: {
@@ -246,7 +324,8 @@ export async function POST(request: NextRequest) {
       message: 'Administrator account created successfully',
     }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/administrators:', error);
+    logger.error('Unexpected API error', error, { context: 'POST /api/admin/administrators' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Bell, User, LogOut, Settings, ChevronDown, Menu, X } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { DashboardUser } from '@/lib/types/dashboard';
+import { logger } from '@/lib/logger';
 
 interface DashboardHeaderProps {
   user?: DashboardUser;
@@ -21,7 +22,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [notificationCount] = useState(3); // Mock notification count
 
-  // Mock user data if not provided
+  // Use provided user data or fallback to mock data
   const currentUser = user || {
     id: '1',
     name: 'Super Administrator',
@@ -30,6 +31,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     email: 'admin@301rribn.mil.ph',
     role: 'super-admin' as const,
   };
+
+  // Log if we're using fallback user data
+  if (!user && typeof window !== 'undefined') {
+    logger.warn('DashboardHeader: No user data provided, using fallback', {
+      context: 'DashboardHeader'
+    });
+  }
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
@@ -65,7 +73,16 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           {/* User Profile Dropdown */}
           <div className="relative">
             <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              onClick={() => {
+                const newState = !isProfileOpen;
+                logger.clickEvent(
+                  'Profile Dropdown Toggle',
+                  newState ? 'Opening profile menu' : 'Closing profile menu',
+                  `${currentUser.role?.toUpperCase() || 'UNKNOWN'}_DashboardHeader`
+                );
+                logger.stateChange('ProfileDropdown', isProfileOpen ? 'open' : 'closed', newState ? 'open' : 'closed');
+                setIsProfileOpen(newState);
+              }}
               className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <Avatar
@@ -86,7 +103,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <>
                 <div
                   className="fixed inset-0 z-40"
-                  onClick={() => setIsProfileOpen(false)}
+                  onClick={(e) => {
+                    // Only close if clicking the backdrop itself, not its children
+                    if (e.target === e.currentTarget) {
+                      setIsProfileOpen(false);
+                    }
+                  }}
                 />
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-military-lg border border-gray-200 py-2 z-50">
                   {/* User Info */}
@@ -117,8 +139,42 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   <div className="border-t border-gray-200 pt-2">
                     <button
                       onClick={() => {
+                        const roleContext = `${currentUser.role?.toUpperCase() || 'UNKNOWN'}_DashboardHeader`;
+
+                        // Log the click event
+                        logger.clickEvent('Sign Out Button', 'User clicked sign out', roleContext);
+                        logger.separator();
+                        logger.info('🚪 LOGOUT BUTTON CLICKED', {
+                          context: roleContext,
+                          email: currentUser.email,
+                          userId: currentUser.id,
+                          data: {
+                            hasOnSignOutHandler: !!onSignOut,
+                            profileMenuOpen: isProfileOpen,
+                            timestamp: new Date().toISOString()
+                          }
+                        });
+
+                        // Check if signOut handler is available
+                        if (!onSignOut) {
+                          logger.signOutError('No signOut handler provided to DashboardHeader', null, roleContext);
+                          alert('Sign out handler is missing. Please refresh the page and try again.');
+                          return;
+                        }
+
+                        // Log state change
+                        logger.stateChange('ProfileDropdown', 'open', 'closed');
                         setIsProfileOpen(false);
-                        onSignOut?.();
+
+                        // Log handler invocation
+                        logger.signOutStep('Invoking onSignOut handler...', roleContext);
+
+                        // Call the sign out handler
+                        try {
+                          onSignOut();
+                        } catch (error) {
+                          logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
+                        }
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >

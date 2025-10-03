@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isValidUUID, sanitizeInput } from '@/lib/utils/validation';
+import { logger } from '@/lib/logger';
 import type { StaffMember, UpdateStaffInput } from '@/lib/types/staff';
 
 /**
@@ -12,28 +13,46 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  logger.separator();
+  logger.info('API Request', { context: 'GET /api/admin/staff/[id]' });
+
   try {
     const { id } = await params;
     const supabase = await createClient();
 
     // Validate ID format
     if (!isValidUUID(id)) {
+      logger.warn('Invalid staff ID format', { context: 'GET /api/admin/staff/[id]', id });
       return NextResponse.json({ success: false, error: 'Invalid staff ID format' }, { status: 400 });
     }
 
     // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'GET /api/admin/staff/[id]' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'GET /api/admin/staff/[id]',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is admin or super_admin
     const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
     if (!isAdminOrAbove) {
+      logger.warn('Insufficient permissions - Admin role required', {
+        context: 'GET /api/admin/staff/[id]',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
+    logger.success('Authorization successful', { context: 'GET /api/admin/staff/[id]', userId: user.id });
+
     // Fetch staff member using the pre-joined view
+    logger.dbQuery('SELECT', 'staff_accounts_with_details', `Fetching staff member: ${id.substring(0, 8)}...`);
     const { data, error } = await supabase
       .from('staff_accounts_with_details')
       .select('*')
@@ -41,8 +60,12 @@ export async function GET(
       .single();
 
     if (error || !data) {
+      logger.dbError('SELECT', 'staff_accounts_with_details', error);
+      logger.warn('Staff member not found', { context: 'GET /api/admin/staff/[id]', staffId: id });
       return NextResponse.json({ success: false, error: 'Staff member not found' }, { status: 404 });
     }
+
+    logger.dbSuccess('SELECT', 'staff_accounts_with_details');
 
     // Transform flat view structure to nested StaffMember type
     const staffMember: StaffMember = {
@@ -73,9 +96,16 @@ export async function GET(
       } : null,
     };
 
+    logger.success(`Staff member retrieved: ${data.first_name} ${data.last_name}`, {
+      context: 'GET /api/admin/staff/[id]',
+      staffId: id
+    });
+    logger.separator();
+
     return NextResponse.json({ success: true, data: staffMember });
   } catch (error) {
-    console.error('Error in GET /api/admin/staff/[id]:', error);
+    logger.error('Unexpected API error', error, { context: 'GET /api/admin/staff/[id]' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -88,41 +118,62 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  logger.separator();
+  logger.info('API Request', { context: 'PATCH /api/admin/staff/[id]' });
+
   try {
     const { id } = await params;
     const supabase = await createClient();
 
     // Validate ID format
     if (!isValidUUID(id)) {
+      logger.warn('Invalid staff ID format', { context: 'PATCH /api/admin/staff/[id]', id });
       return NextResponse.json({ success: false, error: 'Invalid staff ID format' }, { status: 400 });
     }
 
     // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'PATCH /api/admin/staff/[id]' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'PATCH /api/admin/staff/[id]',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is admin or super_admin
     const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
     if (!isAdminOrAbove) {
+      logger.warn('Insufficient permissions - Admin role required', {
+        context: 'PATCH /api/admin/staff/[id]',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
+    logger.success('Authorization successful', { context: 'PATCH /api/admin/staff/[id]', userId: user.id });
+
     // Parse request body
     const body: UpdateStaffInput = await request.json();
+    logger.debug(`Updating staff member: ${id.substring(0, 8)}...`, { context: 'PATCH /api/admin/staff/[id]' });
 
     // Validate at least one field is provided
     if (!body.firstName && !body.lastName && !body.phone && !body.employeeId && !body.position && !body.assignedCompanies && !body.status) {
+      logger.warn('No fields to update', { context: 'PATCH /api/admin/staff/[id]', staffId: id });
       return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 });
     }
 
     // Validate assigned companies is an array if provided
     if (body.assignedCompanies !== undefined && !Array.isArray(body.assignedCompanies)) {
+      logger.warn('Invalid assignedCompanies format', { context: 'PATCH /api/admin/staff/[id]' });
       return NextResponse.json({ success: false, error: 'assignedCompanies must be an array' }, { status: 400 });
     }
 
     // Update staff member using database function
+    logger.dbQuery('FUNCTION', 'update_staff_account', `Updating staff member: ${id.substring(0, 8)}...`);
     const { error: updateError } = await supabase.rpc('update_staff_account', {
       p_account_id: id,
       p_first_name: body.firstName ? sanitizeInput(body.firstName) : null,
@@ -135,11 +186,13 @@ export async function PATCH(
     });
 
     if (updateError) {
-      console.error('Error updating staff member:', updateError);
+      logger.dbError('FUNCTION', 'update_staff_account', updateError);
       return NextResponse.json({ success: false, error: 'Failed to update staff member' }, { status: 500 });
     }
+    logger.dbSuccess('FUNCTION', 'update_staff_account');
 
     // Fetch updated staff member
+    logger.dbQuery('SELECT', 'accounts', 'Fetching updated staff member');
     const { data: updatedStaff } = await supabase
       .from('accounts')
       .select(`
@@ -151,8 +204,10 @@ export async function PATCH(
       .single();
 
     if (!updatedStaff) {
+      logger.error('Failed to fetch updated staff member', null, { context: 'PATCH /api/admin/staff/[id]', staffId: id });
       return NextResponse.json({ success: false, error: 'Failed to fetch updated staff member' }, { status: 500 });
     }
+    logger.dbSuccess('SELECT', 'accounts');
 
     const staffMember: StaffMember = {
       id: updatedStaff.id,
@@ -178,13 +233,20 @@ export async function PATCH(
       },
     };
 
+    logger.success(`Staff member updated successfully: ${updatedStaff.profile.first_name} ${updatedStaff.profile.last_name}`, {
+      context: 'PATCH /api/admin/staff/[id]',
+      staffId: id
+    });
+    logger.separator();
+
     return NextResponse.json({
       success: true,
       data: staffMember,
       message: 'Staff member updated successfully'
     });
   } catch (error) {
-    console.error('Error in PATCH /api/admin/staff/[id]:', error);
+    logger.error('Unexpected API error', error, { context: 'PATCH /api/admin/staff/[id]' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -197,28 +259,46 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  logger.separator();
+  logger.info('API Request', { context: 'DELETE /api/admin/staff/[id]' });
+
   try {
     const { id } = await params;
     const supabase = await createClient();
 
     // Validate ID format
     if (!isValidUUID(id)) {
+      logger.warn('Invalid staff ID format', { context: 'DELETE /api/admin/staff/[id]', id });
       return NextResponse.json({ success: false, error: 'Invalid staff ID format' }, { status: 400 });
     }
 
     // Check if user is authenticated and is admin or super_admin
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      logger.warn('Unauthorized API access attempt', { context: 'DELETE /api/admin/staff/[id]' });
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
+
+    logger.info('User authenticated', {
+      context: 'DELETE /api/admin/staff/[id]',
+      userId: user.id,
+      email: user.email || undefined
+    });
 
     // Verify user is admin or super_admin
     const { data: isAdminOrAbove } = await supabase.rpc('is_admin_or_above', { user_uuid: user.id });
     if (!isAdminOrAbove) {
+      logger.warn('Insufficient permissions - Admin role required', {
+        context: 'DELETE /api/admin/staff/[id]',
+        userId: user.id
+      });
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    // Step 1: Get staff details for logging (optional - before deletion)
+    logger.success('Authorization successful', { context: 'DELETE /api/admin/staff/[id]', userId: user.id });
+
+    // Step 1: Get staff details for logging (before deletion)
+    logger.dbQuery('SELECT', 'staff_accounts_with_details', `Fetching staff details for deletion: ${id.substring(0, 8)}...`);
     const { data: staff } = await supabase
       .from('staff_accounts_with_details')
       .select('email, first_name, last_name')
@@ -226,42 +306,67 @@ export async function DELETE(
       .single();
 
     if (!staff) {
+      logger.dbError('SELECT', 'staff_accounts_with_details', null);
+      logger.warn('Staff member not found', { context: 'DELETE /api/admin/staff/[id]', staffId: id });
       return NextResponse.json({ success: false, error: 'Staff member not found' }, { status: 404 });
     }
+    logger.dbSuccess('SELECT', 'staff_accounts_with_details');
+    logger.info(`Deleting staff member: ${staff.first_name} ${staff.last_name} (${staff.email})`, {
+      context: 'DELETE /api/admin/staff/[id]',
+      staffId: id
+    });
 
     // Step 2: Delete from Supabase Auth using service role key
     const adminClient = createAdminClient();
+    logger.info('Deleting from Supabase Auth', { context: 'DELETE /api/admin/staff/[id]', staffId: id });
     const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(id);
 
     if (authDeleteError) {
-      console.error('Error deleting staff from Auth:', authDeleteError);
+      logger.error('Failed to delete from Supabase Auth', authDeleteError, {
+        context: 'DELETE /api/admin/staff/[id]',
+        staffId: id
+      });
       return NextResponse.json({
         success: false,
         error: 'Failed to delete staff member from authentication system'
       }, { status: 500 });
     }
+    logger.success('Deleted from Supabase Auth successfully', { context: 'DELETE /api/admin/staff/[id]', staffId: id });
 
     // Step 3: Delete from database (CASCADE will handle profiles and staff_details)
+    logger.dbQuery('DELETE', 'accounts', `Deleting staff account: ${id.substring(0, 8)}...`);
     const { error: dbDeleteError } = await adminClient
       .from('accounts')
       .delete()
       .eq('id', id);
 
     if (dbDeleteError) {
-      console.error('Error deleting staff from database:', dbDeleteError);
+      logger.dbError('DELETE', 'accounts', dbDeleteError);
+      logger.warn('Auth user deleted but database deletion failed', {
+        context: 'DELETE /api/admin/staff/[id]',
+        staffId: id
+      });
       // Note: Auth user is already deleted at this point
       return NextResponse.json({
         success: false,
         error: 'Failed to delete staff member from database'
       }, { status: 500 });
     }
+    logger.dbSuccess('DELETE', 'accounts');
+
+    logger.success(`Staff member deleted successfully: ${staff.first_name} ${staff.last_name} (${staff.email})`, {
+      context: 'DELETE /api/admin/staff/[id]',
+      staffId: id
+    });
+    logger.separator();
 
     return NextResponse.json({
       success: true,
       message: 'Staff member deleted successfully'
     });
   } catch (error) {
-    console.error('Error in DELETE /api/admin/staff/[id]:', error);
+    logger.error('Unexpected API error', error, { context: 'DELETE /api/admin/staff/[id]' });
+    logger.separator();
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

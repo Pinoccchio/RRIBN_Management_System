@@ -273,25 +273,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    const userEmail = user?.email || 'unknown';
+    const userId = user?.id;
+
     logger.separator();
-    logger.authAttempt(user?.email || 'unknown', 'signout');
+    logger.authAttempt(userEmail, 'signout');
+    logger.signOutStep('Step 1: Calling Supabase auth.signOut()', 'AuthContext');
 
     try {
+      // Clear Supabase session
       const { error } = await supabase.auth.signOut();
 
       if (error) {
-        logger.error('Sign out failed', error);
-      } else {
-        logger.session('end', user?.id);
-        setUser(null);
-        setSession(null);
-        logger.success('Sign out complete');
+        logger.signOutError('Supabase signOut returned error', error, 'AuthContext');
+        throw error;
       }
 
-      logger.separator();
+      logger.signOutStep('Step 2: Supabase signOut successful', 'AuthContext');
+      logger.signOutStep('Step 3: Clearing local React state', 'AuthContext');
+
+      // Clear local state
+      logger.session('end', userId);
+      setUser(null);
+      setSession(null);
+
+      logger.signOutStep('Step 4: Clearing browser storage', 'AuthContext');
+
+      // Clear any localStorage/sessionStorage related to auth
+      if (typeof window !== 'undefined') {
+        // Clear any potential cached auth data
+        try {
+          localStorage.removeItem('supabase.auth.token');
+          sessionStorage.clear();
+          logger.signOutStep('Step 5: Browser storage cleared', 'AuthContext');
+        } catch (storageError) {
+          logger.warn('Could not clear browser storage', { context: 'AuthContext' });
+        }
+      }
+
+      logger.signOutSuccess('AuthContext');
     } catch (error) {
-      logger.error('Sign out error', error);
-      logger.separator();
+      logger.signOutError('Sign out failed in catch block', error, 'AuthContext');
+
+      // Even if error occurs, clear local state to prevent stuck auth
+      logger.warn('Force clearing local state despite error', { context: 'AuthContext' });
+      setUser(null);
+      setSession(null);
+
+      throw error;
     }
   };
 
