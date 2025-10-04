@@ -62,6 +62,7 @@ export interface Reservist {
   approved_by: string | null;
   approved_at: string | null;
   last_login_at: string | null;
+  rejection_reason: string | null;
   // Nested objects
   profile: Profile;
   reservist_details: ReservistDetails;
@@ -82,6 +83,7 @@ export interface ReservistViewData {
   approved_by: string | null;
   approved_at: string | null;
   last_login_at: string | null;
+  rejection_reason: string | null;
   // Profile fields
   first_name: string;
   middle_name: string | null;

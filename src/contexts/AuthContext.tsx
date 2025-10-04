@@ -114,8 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(session);
           if (session?.user) {
             const enrichedUser = await fetchUserAccountAndProfile(session.user);
-            setUser(enrichedUser);
-            logger.success('User session initialized', { userId: session.user.id });
+
+            // Verify we got the profile data before setting user
+            if (enrichedUser.profile) {
+              setUser(enrichedUser);
+              logger.success('User session initialized with profile', {
+                userId: session.user.id,
+                name: `${enrichedUser.profile.first_name} ${enrichedUser.profile.last_name}`
+              });
+            } else {
+              // Set user with whatever data we have, even if profile is missing
+              setUser(enrichedUser);
+              logger.warn('User session initialized but profile is missing', {
+                userId: session.user.id,
+                hasAccount: !!enrichedUser.account
+              });
+            }
           }
         } else {
           logger.info('No active session found');
@@ -157,15 +171,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setSession(session);
-        if (session?.user) {
-          const enrichedUser = await fetchUserAccountAndProfile(session.user);
-          setUser(enrichedUser);
+        // Handle INITIAL_SESSION and SIGNED_IN events
+        // On page refresh, preserve existing user data to prevent flashing "Guest"
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          setSession(session);
+
+          if (session?.user) {
+            // For INITIAL_SESSION, only fetch if we don't already have complete user data
+            // This prevents double-fetching on page refresh
+            setUser(prevUser => {
+              const needsFetch = !prevUser || !prevUser.profile || !prevUser.account;
+
+              if (needsFetch) {
+                logger.debug(`Fetching user data for ${event} event`);
+                // Fetch asynchronously and update state
+                fetchUserAccountAndProfile(session.user).then(enrichedUser => {
+                  if (enrichedUser.account || enrichedUser.profile) {
+                    setUser(enrichedUser);
+                    logger.debug('User data updated successfully');
+                  } else {
+                    logger.warn('Profile fetch incomplete, preserving existing user data');
+                  }
+                });
+
+                // Return previous user data immediately to prevent UI flash
+                return prevUser || session.user;
+              } else {
+                logger.debug(`Skipping fetch for ${event} - user data already complete`);
+                return prevUser;
+              }
+            });
+          } else {
+            setUser(null);
+          }
         } else {
-          setUser(null);
+          // For other events (TOKEN_REFRESHED, etc.), update normally
+          setSession(session);
+          if (session?.user) {
+            const enrichedUser = await fetchUserAccountAndProfile(session.user);
+            setUser(enrichedUser);
+          } else {
+            setUser(null);
+          }
         }
       } catch (error) {
         logger.error('Error handling auth state change', error);
+        // On error, preserve existing user data if available
+        setUser(prevUser => prevUser);
       } finally {
         setLoading(false);
       }

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, CheckCircle, XCircle, Clock, Mail, Shield } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Mail, Shield, AlertCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { timeAgo } from '@/lib/design-system/utils';
@@ -134,6 +134,14 @@ export function ReservistTable({
                   {reservist.approved_by && reservist.approved_at && (
                     <div className="text-xs text-gray-500 mt-1">
                       {formatDate(reservist.approved_at)}
+                    </div>
+                  )}
+                  {reservist.status === 'deactivated' && reservist.rejection_reason && (
+                    <div className="flex items-start gap-1 mt-1" title={reservist.rejection_reason}>
+                      <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-xs text-red-600 line-clamp-1">
+                        {reservist.rejection_reason}
+                      </span>
                     </div>
                   )}
                 </td>

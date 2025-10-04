@@ -88,49 +88,24 @@ export async function PUT(
 
     logger.dbSuccess('SELECT', 'accounts');
 
-    // Update account status to deactivated
-    logger.dbQuery('UPDATE', 'accounts', `Rejecting account: ${reservistAccount.email}`);
-    const { error: updateError } = await supabase
-      .from('accounts')
-      .update({
-        status: 'deactivated',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', reservistId);
+    // Call the reject_account database function
+    // This function handles: status update, rejection_reason storage, notification, and audit log
+    logger.dbQuery('FUNCTION', 'reject_account', `Rejecting account: ${reservistAccount.email}`);
+    const { data: rejectResult, error: rejectError } = await supabase.rpc('reject_account', {
+      p_account_id: reservistId,
+      p_rejector_id: user.id,
+      p_rejection_reason: rejectionReason
+    });
 
-    if (updateError) {
-      logger.dbError('UPDATE', 'accounts', updateError);
+    if (rejectError) {
+      logger.dbError('FUNCTION', 'reject_account', rejectError);
       return NextResponse.json({
         success: false,
         error: 'Failed to reject account'
       }, { status: 500 });
     }
 
-    logger.dbSuccess('UPDATE', 'accounts');
-
-    // Create notification for the reservist
-    logger.dbQuery('INSERT', 'notifications', 'Creating rejection notification');
-    await supabase
-      .from('notifications')
-      .insert({
-        user_id: reservistId,
-        title: 'Account Rejected',
-        message: `Your account registration has been rejected. Reason: ${rejectionReason}`,
-        type: 'account'
-      });
-    logger.dbSuccess('INSERT', 'notifications');
-
-    // Create audit log
-    logger.dbQuery('FUNCTION', 'create_audit_log', 'Creating audit log for rejection');
-    await supabase.rpc('create_audit_log', {
-      p_user_id: user.id,
-      p_action: 'reject',
-      p_entity_type: 'accounts',
-      p_entity_id: reservistId,
-      p_old_values: { status: reservistAccount.status },
-      p_new_values: { status: 'deactivated', rejection_reason: rejectionReason }
-    });
-    logger.dbSuccess('FUNCTION', 'create_audit_log');
+    logger.dbSuccess('FUNCTION', 'reject_account');
 
     // Fetch the updated account
     logger.dbQuery('SELECT', 'reservist_accounts_with_details', 'Fetching updated reservist details');

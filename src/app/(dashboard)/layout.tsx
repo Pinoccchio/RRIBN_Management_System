@@ -106,19 +106,24 @@ export default function DashboardLayout({
     role: role,
   } : user ? {
     id: user.id,
+    // Priority: profile name > email username > role-based name
+    // NEVER show "Guest" if user object exists - always show something meaningful
     name: user.profile
       ? `${user.profile.first_name} ${user.profile.last_name}`
-      : user.email || 'User',
-    firstName: user.profile?.first_name || user.email?.split('@')[0] || 'User',
+      : user.email
+        ? user.email.split('@')[0]
+        : `${role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')} User`,
+    firstName: user.profile?.first_name || (user.email ? user.email.split('@')[0] : role.charAt(0).toUpperCase() + role.slice(1)),
     lastName: user.profile?.last_name || '',
     email: user.email || '',
     role: role,
   } : {
     // Fallback for unauthenticated state (should not happen in dashboard)
+    // This will trigger the redirect in the useEffect above
     id: 'guest',
-    name: 'Guest',
-    firstName: 'Guest',
-    lastName: '',
+    name: `${role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')} User`,
+    firstName: role.charAt(0).toUpperCase() + role.slice(1),
+    lastName: 'User',
     email: '',
     role: role,
   };
@@ -135,7 +140,11 @@ export default function DashboardLayout({
   // Show loading state while auth is initializing to prevent hydration mismatch
   // This ensures handleSignOut has proper user context before user can interact
   // BUT: If loading takes more than 10 seconds, force render to prevent infinite loading
-  if (loading && !loadingTimeout) {
+  // IMPORTANT: Only show loading if we have NO user data at all
+  // If we have user but missing profile, render dashboard with email fallback
+  const shouldShowLoading = loading && !user && !loadingTimeout;
+
+  if (shouldShowLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

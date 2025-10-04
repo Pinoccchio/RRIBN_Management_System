@@ -298,6 +298,20 @@ export function ViewReservistModal({
                 </div>
               </>
             )}
+
+            {reservist.status === 'deactivated' && reservist.rejection_reason && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-900 mb-1">Rejection Reason</p>
+                    <p className="text-sm text-red-700">
+                      {reservist.rejection_reason}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
