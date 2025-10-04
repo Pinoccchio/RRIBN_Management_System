@@ -201,3 +201,4 @@ Required environment variables:
 3. Build modals (Create, Edit, View, Delete) in `src/components/dashboard/[resource]/`
 4. Create table component for displaying data
 5. Build main page that orchestrates all components
+- we are using supabse mcp server, when the user asking or what something always analyze the overall codebase, everything and use the supabse mcp server https://wvnxdgoenmqyfvymxwef.supabase.co to analyze the overall tables, columns, rows, policies, functions, feel free to modify if needed
