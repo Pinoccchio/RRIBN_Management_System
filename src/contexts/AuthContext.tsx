@@ -138,6 +138,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: session?.user?.email || undefined
         });
 
+        // Handle SIGNED_OUT event immediately
+        if (event === 'SIGNED_OUT') {
+          logger.signOutStep('SIGNED_OUT event detected - forcing immediate redirect', 'AuthContext');
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+
+          // Force immediate redirect to signin page
+          if (typeof window !== 'undefined') {
+            const currentPath = window.location.pathname;
+            // Only redirect if not already on signin page
+            if (!currentPath.startsWith('/signin')) {
+              logger.signOutStep('Redirecting to /signin via window.location', 'AuthContext');
+              window.location.href = '/signin';
+            }
+          }
+          return;
+        }
+
         setSession(session);
         if (session?.user) {
           const enrichedUser = await fetchUserAccountAndProfile(session.user);

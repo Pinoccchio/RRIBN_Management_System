@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DashboardSidebar } from '@/components/dashboard/layout/DashboardSidebar';
 import { DashboardHeader } from '@/components/dashboard/layout/DashboardHeader';
@@ -17,6 +17,21 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Add timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        logger.error('Loading timeout reached - forcing dashboard render', null, { context: 'DashboardLayout' });
+        setLoadingTimeout(true);
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [loading]);
 
   // Determine role from authenticated user or pathname as fallback
   const role = user?.account?.role
@@ -41,42 +56,48 @@ export default function DashboardLayout({
 
       logger.signOutStep('AuthContext.signOut() completed successfully', `${roleUpper}_Layout`);
 
-      // Step 2: Force router to refresh and clear cache
-      logger.signOutStep('Refreshing router cache...', `${roleUpper}_Layout`);
-      router.refresh();
-
-      // Small delay to ensure refresh completes
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Step 3: Navigate to sign-in using replace (prevents back button issues)
-      logger.signOutStep('Navigating to /signin (using replace)...', `${roleUpper}_Layout`);
-      router.replace('/signin');
-
-      // Step 4: Fallback hard redirect if router navigation doesn't work
-      setTimeout(() => {
-        if (window.location.pathname !== '/signin') {
-          logger.warn('Router navigation did not redirect, forcing window.location', {
-            context: `${roleUpper}_Layout`
-          });
-          window.location.href = '/signin';
-        }
-      }, 500);
+      // Step 2: Immediate hard redirect - most reliable method
+      // Note: The AuthContext onAuthStateChange listener will also trigger redirect
+      // but we do it here too for immediate feedback
+      logger.signOutStep('Forcing immediate redirect to /signin', `${roleUpper}_Layout`);
+      window.location.replace('/signin');
 
       logger.signOutSuccess(`${roleUpper}_Layout`);
     } catch (error) {
       logger.signOutError('Sign out failed, forcing redirect anyway', error, `${roleUpper}_Layout`);
 
       // Force clear and redirect even if error occurs
-      logger.signOutStep('Emergency fallback: Using window.location.href', `${roleUpper}_Layout`);
+      logger.signOutStep('Emergency fallback: Using window.location.replace', `${roleUpper}_Layout`);
 
       // Use hard redirect to ensure user gets to signin page
-      window.location.href = '/signin';
+      window.location.replace('/signin');
     }
   };
 
+  // Watch for user becoming null and force redirect
+  // This handles the case where auth state changes but component doesn't unmount
+  useEffect(() => {
+    if (!loading && !user && typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      const isDashboardRoute = protectedRoutes.some(route => currentPath.startsWith(route));
+
+      if (isDashboardRoute) {
+        logger.warn('User is null on dashboard route - forcing redirect to signin', {
+          context: `${role.toUpperCase()}_Layout`,
+          currentPath
+        });
+        window.location.replace('/signin');
+      }
+    }
+  }, [user, loading, role]);
+
+  // Define protected routes for the check above
+  const protectedRoutes = ['/super-admin', '/admin', '/staff', '/reservist'];
+
   // Prepare user data for header (or loading state)
   // IMPORTANT: Always provide a valid user object to ensure logout works
-  const dashboardUser = loading ? {
+  // If loading times out, force render with real user data instead of "Loading..."
+  const dashboardUser = (loading && !loadingTimeout) ? {
     id: 'loading',
     name: 'Loading...',
     firstName: 'Loading',
@@ -113,12 +134,14 @@ export default function DashboardLayout({
 
   // Show loading state while auth is initializing to prevent hydration mismatch
   // This ensures handleSignOut has proper user context before user can interact
-  if (loading) {
+  // BUT: If loading takes more than 10 seconds, force render to prevent infinite loading
+  if (loading && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mb-4"></div>
           <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-xs text-gray-400 mt-2">If this takes too long, please refresh the page</p>
         </div>
       </div>
     );

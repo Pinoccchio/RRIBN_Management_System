@@ -73,10 +73,19 @@ export async function middleware(request: NextRequest) {
   // Redirect to sign in if accessing protected route without auth
   if (isProtectedRoute && !user) {
     log.warn('Unauthorized access to protected route - Redirecting to signin', path);
+
+    // Create response that clears auth-related cookies
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/signin';
     redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+
+    const response = NextResponse.redirect(redirectUrl);
+
+    // Clear any stale auth cookies to prevent stuck sessions
+    response.cookies.delete('sb-access-token');
+    response.cookies.delete('sb-refresh-token');
+
+    return response;
   }
 
   // Role-based access control for dashboard routes
@@ -93,11 +102,18 @@ export async function middleware(request: NextRequest) {
 
       // Check if account is not active
       if (account.status !== 'active') {
-        log.warn('Account not active - Redirecting to signin', path);
+        log.warn('Account not active - Redirecting to signin and clearing session', path);
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = '/signin';
         redirectUrl.searchParams.set('message', 'account_not_active');
-        return NextResponse.redirect(redirectUrl);
+
+        const response = NextResponse.redirect(redirectUrl);
+
+        // Clear auth cookies for inactive accounts
+        response.cookies.delete('sb-access-token');
+        response.cookies.delete('sb-refresh-token');
+
+        return response;
       }
 
       // Role-based route mapping

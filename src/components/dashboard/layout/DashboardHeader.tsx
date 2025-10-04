@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, User, LogOut, Settings, ChevronDown, Menu, X } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { DashboardUser } from '@/lib/types/dashboard';
@@ -21,6 +21,55 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [notificationCount] = useState(3); // Mock notification count
+
+  // Close dropdown when user changes (e.g., on sign out)
+  useEffect(() => {
+    if (isProfileOpen) {
+      setIsProfileOpen(false);
+    }
+  }, [user?.id]);
+
+  // Memoize sign out handler to ensure it's always fresh
+  const handleSignOut = useCallback(() => {
+    const roleContext = `${user?.role?.toUpperCase() || 'UNKNOWN'}_DashboardHeader`;
+
+    // Log the click event
+    logger.clickEvent('Sign Out Button', 'User clicked sign out', roleContext);
+    logger.separator();
+    logger.info('🚪 LOGOUT BUTTON CLICKED', {
+      context: roleContext,
+      email: user?.email,
+      userId: user?.id,
+      data: {
+        hasOnSignOutHandler: !!onSignOut,
+        profileMenuOpen: isProfileOpen,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    // Check if signOut handler is available
+    if (!onSignOut) {
+      logger.signOutError('No signOut handler provided to DashboardHeader', null, roleContext);
+      alert('Sign out handler is missing. Please refresh the page and try again.');
+      return;
+    }
+
+    // Log state change
+    logger.stateChange('ProfileDropdown', 'open', 'closed');
+    setIsProfileOpen(false);
+
+    // Log handler invocation
+    logger.signOutStep('Invoking onSignOut handler...', roleContext);
+
+    // Call the sign out handler asynchronously
+    try {
+      Promise.resolve(onSignOut()).catch((error) => {
+        logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
+      });
+    } catch (error) {
+      logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
+    }
+  }, [user, onSignOut, isProfileOpen]);
 
   // Use provided user data or fallback to mock data
   const currentUser = user || {
@@ -138,46 +187,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   {/* Sign Out */}
                   <div className="border-t border-gray-200 pt-2">
                     <button
-                      onClick={() => {
-                        const roleContext = `${currentUser.role?.toUpperCase() || 'UNKNOWN'}_DashboardHeader`;
-
-                        // Log the click event
-                        logger.clickEvent('Sign Out Button', 'User clicked sign out', roleContext);
-                        logger.separator();
-                        logger.info('🚪 LOGOUT BUTTON CLICKED', {
-                          context: roleContext,
-                          email: currentUser.email,
-                          userId: currentUser.id,
-                          data: {
-                            hasOnSignOutHandler: !!onSignOut,
-                            profileMenuOpen: isProfileOpen,
-                            timestamp: new Date().toISOString()
-                          }
-                        });
-
-                        // Check if signOut handler is available
-                        if (!onSignOut) {
-                          logger.signOutError('No signOut handler provided to DashboardHeader', null, roleContext);
-                          alert('Sign out handler is missing. Please refresh the page and try again.');
-                          return;
-                        }
-
-                        // Log state change
-                        logger.stateChange('ProfileDropdown', 'open', 'closed');
-                        setIsProfileOpen(false);
-
-                        // Log handler invocation
-                        logger.signOutStep('Invoking onSignOut handler...', roleContext);
-
-                        // Call the sign out handler asynchronously
-                        try {
-                          Promise.resolve(onSignOut()).catch((error) => {
-                            logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
-                          });
-                        } catch (error) {
-                          logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
-                        }
-                      }}
+                      onClick={handleSignOut}
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
