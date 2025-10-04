@@ -14,7 +14,7 @@ import { logger } from '@/lib/logger';
 type TabType = 'pending' | 'active' | 'all';
 
 export default function ReservistsPage() {
-  const [reservists, setReservists] = useState<Reservist[]>([]);
+  const [allReservists, setAllReservists] = useState<Reservist[]>([]); // Store ALL reservists
   const [filteredReservists, setFilteredReservists] = useState<Reservist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,19 +26,19 @@ export default function ReservistsPage() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedReservist, setSelectedReservist] = useState<Reservist | null>(null);
 
-  // Fetch reservists
-  const fetchReservists = async () => {
+  // Fetch ALL reservists (called once on mount)
+  const fetchAllReservists = async () => {
     try {
       setIsLoading(true);
-      logger.info('Fetching reservists...', { context: 'ReservistsPage' });
+      logger.info('Fetching all reservists...', { context: 'ReservistsPage' });
 
-      const response = await fetch(`/api/admin/reservists?status=${activeTab}&limit=100`);
+      // Fetch ALL reservists regardless of status
+      const response = await fetch(`/api/admin/reservists?status=all&limit=1000`);
       const data = await response.json();
 
       if (data.success) {
-        setReservists(data.data);
-        setFilteredReservists(data.data);
-        logger.success(`Fetched ${data.data.length} reservists`, { context: 'ReservistsPage' });
+        setAllReservists(data.data);
+        logger.success(`Fetched ${data.data.length} total reservists`, { context: 'ReservistsPage' });
       } else {
         logger.error('Failed to fetch reservists', data.error, { context: 'ReservistsPage' });
       }
@@ -49,20 +49,54 @@ export default function ReservistsPage() {
     }
   };
 
-  // Initial fetch
+  // Initial fetch - only once on mount
   useEffect(() => {
-    fetchReservists();
-  }, [activeTab]);
+    fetchAllReservists();
+  }, []);
 
-  // Filter reservists based on search query
+  // Filter reservists by active tab
   useEffect(() => {
+    if (!allReservists.length) {
+      setFilteredReservists([]);
+      return;
+    }
+
+    let tabFiltered = allReservists;
+
+    // Apply tab filter
+    if (activeTab === 'pending') {
+      tabFiltered = allReservists.filter(r => r.status === 'pending');
+    } else if (activeTab === 'active') {
+      tabFiltered = allReservists.filter(r => r.status === 'active');
+    }
+    // For 'all' tab, keep all reservists
+
+    setFilteredReservists(tabFiltered);
+  }, [activeTab, allReservists]);
+
+  // Apply search filter on top of tab filter
+  useEffect(() => {
+    if (!allReservists.length) {
+      setFilteredReservists([]);
+      return;
+    }
+
+    // First, filter by active tab
+    let tabFiltered = allReservists;
+    if (activeTab === 'pending') {
+      tabFiltered = allReservists.filter(r => r.status === 'pending');
+    } else if (activeTab === 'active') {
+      tabFiltered = allReservists.filter(r => r.status === 'active');
+    }
+
+    // Then, apply search filter if query exists
     if (!searchQuery.trim()) {
-      setFilteredReservists(reservists);
+      setFilteredReservists(tabFiltered);
       return;
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = reservists.filter((reservist) => {
+    const searchFiltered = tabFiltered.filter((reservist) => {
       const fullName = `${reservist.profile.first_name} ${reservist.profile.middle_name || ''} ${reservist.profile.last_name}`.toLowerCase();
       const email = reservist.email.toLowerCase();
       const serviceNumber = reservist.reservist_details.service_number.toLowerCase();
@@ -78,8 +112,8 @@ export default function ReservistsPage() {
       );
     });
 
-    setFilteredReservists(filtered);
-  }, [searchQuery, reservists]);
+    setFilteredReservists(searchFiltered);
+  }, [searchQuery, activeTab, allReservists]);
 
   // Modal handlers
   const handleView = (reservist: Reservist) => {
@@ -113,7 +147,7 @@ export default function ReservistsPage() {
       if (data.success) {
         logger.success('Reservist approved successfully', { context: 'ReservistsPage' });
         // Refresh the list
-        fetchReservists();
+        fetchAllReservists();
       } else {
         logger.error('Failed to approve reservist', data.error, { context: 'ReservistsPage' });
         alert(`Failed to approve reservist: ${data.error}`);
@@ -141,7 +175,7 @@ export default function ReservistsPage() {
       if (data.success) {
         logger.success('Reservist rejected successfully', { context: 'ReservistsPage' });
         // Refresh the list
-        fetchReservists();
+        fetchAllReservists();
       } else {
         logger.error('Failed to reject reservist', data.error, { context: 'ReservistsPage' });
         alert(`Failed to reject reservist: ${data.error}`);
@@ -152,10 +186,10 @@ export default function ReservistsPage() {
     }
   };
 
-  // Tab counts
-  const pendingCount = reservists.filter(r => r.status === 'pending').length;
-  const activeCount = reservists.filter(r => r.status === 'active').length;
-  const totalCount = reservists.length;
+  // Tab counts - calculated from ALL reservists to show counts on all tabs
+  const pendingCount = allReservists.filter(r => r.status === 'pending').length;
+  const activeCount = allReservists.filter(r => r.status === 'active').length;
+  const totalCount = allReservists.length;
 
   return (
     <div className="space-y-6">
