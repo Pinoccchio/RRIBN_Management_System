@@ -91,13 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUserData = async () => {
     logger.info('Refreshing user data');
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser) {
-      const enrichedUser = await fetchUserAccountAndProfile(authUser);
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (currentSession?.user) {
+      const enrichedUser = await fetchUserAccountAndProfile(currentSession.user);
+      setSession(currentSession);
       setUser(enrichedUser);
-      logger.success('User data refreshed successfully', { userId: authUser.id });
+      logger.success('User data and session refreshed successfully', { userId: currentSession.user.id });
     } else {
-      logger.warn('No authenticated user found during refresh');
+      logger.warn('No authenticated session found during refresh');
     }
   };
 

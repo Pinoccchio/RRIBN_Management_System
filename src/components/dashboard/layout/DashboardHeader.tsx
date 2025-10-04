@@ -169,9 +169,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                         // Log handler invocation
                         logger.signOutStep('Invoking onSignOut handler...', roleContext);
 
-                        // Call the sign out handler
+                        // Call the sign out handler asynchronously
                         try {
-                          onSignOut();
+                          Promise.resolve(onSignOut()).catch((error) => {
+                            logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
+                          });
                         } catch (error) {
                           logger.signOutError('Exception thrown when calling onSignOut', error, roleContext);
                         }

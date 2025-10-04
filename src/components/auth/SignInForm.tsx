@@ -82,6 +82,7 @@ export const SignInForm: React.FC = () => {
     setErrors({});
 
     try {
+      logger.info('Calling signIn with credentials', { email: formData.email });
       const { error } = await signIn(formData.email, formData.password);
 
       if (error) {
@@ -93,15 +94,15 @@ export const SignInForm: React.FC = () => {
         return;
       }
 
-      // Successfully signed in - middleware will handle role-based redirect
-      logger.success('Sign in successful - Middleware will redirect to role-based dashboard', { email: formData.email });
+      // Successfully signed in - AuthContext has already refreshed user data
+      logger.success('Sign in successful - User data loaded', { email: formData.email });
+      logger.info('Navigating to home (middleware will redirect to dashboard)', { email: formData.email });
 
-      // Small delay to allow middleware to process
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Trigger navigation (middleware will redirect to appropriate dashboard)
-      router.push('/');
+      // Force router refresh to ensure middleware picks up new session
       router.refresh();
+
+      // Navigate to home page - middleware will redirect to the appropriate dashboard
+      router.push('/');
     } catch (error) {
       logger.error('Unexpected error during sign in', error, { email: formData.email });
       setErrors({
