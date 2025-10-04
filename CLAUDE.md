@@ -202,3 +202,45 @@ Required environment variables:
 4. Create table component for displaying data
 5. Build main page that orchestrates all components
 - we are using supabse mcp server, when the user asking or what something always analyze the overall codebase, everything and use the supabse mcp server https://wvnxdgoenmqyfvymxwef.supabase.co to analyze the overall tables, columns, rows, policies, functions, feel free to modify if needed
+
+## Important: Understanding the Two-Status System
+
+The RRIBN Management System uses **TWO SEPARATE STATUS FIELDS** for reservists. It is critical to understand the distinction:
+
+### 1. Account Status (`accounts.status`)
+- **Location:** `accounts` table
+- **Type:** `account_status` ENUM
+- **Values:** `'pending'` | `'active'` | `'inactive'` | `'deactivated'`
+- **Purpose:** Controls system access and login permissions
+- **Who Can Change:**
+  - **Admin/Super Admin:** Full control (approve, reject, reactivate, revert to pending)
+  - **Staff:** Can toggle between `active` ↔ `inactive` only (via Change Account Status modal)
+  - **Reservist:** Cannot change their own status
+- **Meaning:**
+  - `pending` - Awaiting admin approval (cannot login)
+  - `active` - Approved and can access the system
+  - `inactive` - Temporarily disabled account
+  - `deactivated` - Rejected or permanently disabled
+
+### 2. Reservist Status (`reservist_details.reservist_status`)
+- **Location:** `reservist_details` table
+- **Type:** `reservist_status` ENUM
+- **Values:** `'ready'` | `'standby'` | `'retired'`
+- **Purpose:** Military operational readiness classification
+- **Who Can Change:**
+  - **Staff:** Can change via Edit Reservist modal (labeled as "Operational Status")
+  - **Admin/Super Admin:** Can change via Edit Reservist modal
+- **Meaning:**
+  - `ready` - Active and available for immediate deployment
+  - `standby` - In reserve, not immediately available
+  - `retired` - Separated from active service
+
+### Key Points:
+1. **Account Status** affects login/access - managed separately from military status
+2. **Reservist Status** reflects military readiness - managed via Edit Reservist form
+3. **Type Definitions:** See `src/lib/types/reservist.ts` for `AccountStatus` and `ReservistStatus` types
+4. **UI Labels:**
+   - "Account Status" = access control
+   - "Operational Status" or "Reservist Status" = military readiness
+5. **Staff Capability:** Staff can now change account status (active/inactive) via ChangeAccountStatusModal
+6. **API Endpoint:** `/api/staff/reservists/[id]/change-status` (PUT) for account status changes

@@ -64,6 +64,13 @@ export async function middleware(request: NextRequest) {
     log.info('No authenticated user', path);
   }
 
+  // Skip middleware for API routes - they handle auth via JSON responses
+  const isApiRoute = path.startsWith('/api/');
+  if (isApiRoute) {
+    log.info('API route - Skipping middleware auth redirect', path);
+    return supabaseResponse;
+  }
+
   // Protected route patterns
   const protectedRoutes = ['/super-admin', '/admin', '/staff', '/reservist', '/profile', '/settings'];
   const isProtectedRoute = protectedRoutes.some((route) =>

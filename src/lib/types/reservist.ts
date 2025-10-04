@@ -1,8 +1,32 @@
 /**
  * Reservist-related type definitions
+ *
+ * IMPORTANT: This file defines types for TWO different status fields:
+ * 1. Account Status (accounts.status) - Controls system access and approval workflow
+ *    Values: 'pending' | 'active' | 'inactive' | 'deactivated'
+ * 2. Reservist Status (reservist_details.reservist_status) - Military operational readiness
+ *    Values: 'ready' | 'standby' | 'retired'
  */
 
-export type ReservistStatus = 'active' | 'inactive' | 'deployed' | 'retired';
+/**
+ * Military operational readiness status for reservists
+ * Stored in: reservist_details.reservist_status
+ * - ready: Active and available for immediate deployment
+ * - standby: In reserve, not immediately available
+ * - retired: Separated from active service
+ */
+export type ReservistStatus = 'ready' | 'standby' | 'retired';
+
+/**
+ * Account access status for all users
+ * Stored in: accounts.status
+ * - pending: Awaiting admin approval (cannot login)
+ * - active: Approved and can access the system
+ * - inactive: Temporarily disabled account
+ * - deactivated: Rejected or permanently disabled
+ */
+export type AccountStatus = 'pending' | 'active' | 'inactive' | 'deactivated';
+
 export type CommissionType = 'ROTC' | 'OCS' | 'PMA' | 'Direct' | 'Other';
 
 export interface ReservistDetails {
@@ -55,7 +79,8 @@ export interface Reservist {
   id: string;
   email: string;
   role: 'reservist';
-  status: 'pending' | 'active' | 'inactive' | 'deactivated';
+  /** Account access status - controls login and system access */
+  status: AccountStatus;
   created_at: string;
   updated_at: string;
   created_by: string | null;

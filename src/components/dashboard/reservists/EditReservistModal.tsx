@@ -168,7 +168,7 @@ export function EditReservistModal({
                 ]}
               />
               <Select
-                label="Status"
+                label="Operational Status"
                 value={reservistStatus}
                 onChange={(value) => setReservistStatus(value)}
                 options={[
@@ -176,6 +176,7 @@ export function EditReservistModal({
                   { value: 'standby', label: 'Standby' },
                   { value: 'retired', label: 'Retired' },
                 ]}
+                helperText="Military readiness status (different from account status)"
               />
               <div className="md:col-span-2">
                 <Input

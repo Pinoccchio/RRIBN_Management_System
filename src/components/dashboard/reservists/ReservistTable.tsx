@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, CheckCircle, XCircle, Clock, Mail, Shield, AlertCircle, RotateCcw, RefreshCw, Edit } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Mail, Shield, AlertCircle, RotateCcw, RefreshCw, Edit, UserX, UserCheck } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { timeAgo } from '@/lib/design-system/utils';
@@ -15,6 +15,7 @@ interface ReservistTableProps {
   onRevertToPending?: (reservist: Reservist) => void;
   onReactivate?: (reservist: Reservist) => void;
   onEdit?: (reservist: Reservist) => void;
+  onChangeAccountStatus?: (reservist: Reservist) => void;
   hideApprovalActions?: boolean;
 }
 
@@ -26,6 +27,7 @@ export function ReservistTable({
   onRevertToPending,
   onReactivate,
   onEdit,
+  onChangeAccountStatus,
   hideApprovalActions = false,
 }: ReservistTableProps) {
   const formatDate = (dateString: string | null) => {
@@ -181,6 +183,25 @@ export function ReservistTable({
                         title="Edit reservist"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {/* Change Account Status (for Staff role) - Only for active/inactive accounts */}
+                    {onChangeAccountStatus && (reservist.status === 'active' || reservist.status === 'inactive') && (
+                      <button
+                        onClick={() => onChangeAccountStatus(reservist)}
+                        className={`p-2 rounded-lg transition-all hover:scale-105 ${
+                          reservist.status === 'active'
+                            ? 'text-orange-600 hover:bg-orange-50'
+                            : 'text-green-600 hover:bg-green-50'
+                        }`}
+                        title={reservist.status === 'active' ? 'Deactivate account' : 'Activate account'}
+                      >
+                        {reservist.status === 'active' ? (
+                          <UserX className="w-4 h-4" />
+                        ) : (
+                          <UserCheck className="w-4 h-4" />
+                        )}
                       </button>
                     )}
 

@@ -5,8 +5,10 @@ import { PageHeader } from '@/components/dashboard/shared/PageHeader';
 import { ReservistTable } from '@/components/dashboard/reservists/ReservistTable';
 import { ViewReservistModal } from '@/components/dashboard/reservists/ViewReservistModal';
 import { EditReservistModal } from '@/components/dashboard/reservists/EditReservistModal';
+import { ChangeAccountStatusModal } from '@/components/dashboard/reservists/ChangeAccountStatusModal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Toast } from '@/components/ui/Toast';
 import { Search, Filter } from 'lucide-react';
 import type { Reservist } from '@/lib/types/reservist';
 import { logger } from '@/lib/logger';
@@ -24,7 +26,11 @@ export default function StaffReservistsPage() {
   // Modal states
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [changeStatusModalOpen, setChangeStatusModalOpen] = useState(false);
   const [selectedReservist, setSelectedReservist] = useState<Reservist | null>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Fetch all reservists in assigned companies
   const fetchAllReservists = async () => {
@@ -110,7 +116,55 @@ export default function StaffReservistsPage() {
   };
 
   const handleEditSuccess = () => {
+    setToast({
+      message: 'Reservist updated successfully!',
+      type: 'success',
+    });
     fetchAllReservists();
+  };
+
+  const handleChangeAccountStatus = (reservist: Reservist) => {
+    setSelectedReservist(reservist);
+    setChangeStatusModalOpen(true);
+  };
+
+  const handleChangeStatusSubmit = async (reservistId: string, newStatus: 'active' | 'inactive', reason: string) => {
+    try {
+      logger.info('Changing account status', { reservistId, newStatus, reason });
+
+      const response = await fetch(`/api/staff/reservists/${reservistId}/change-status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus, reason }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        logger.success('Account status changed successfully');
+        setToast({
+          message: `Account ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`,
+          type: 'success',
+        });
+        fetchAllReservists();
+      } else {
+        logger.error('Failed to change account status', data.error);
+        setToast({
+          message: data.error || 'Failed to change account status',
+          type: 'error',
+        });
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      logger.error('Error changing account status', error);
+      setToast({
+        message: 'An error occurred while changing account status',
+        type: 'error',
+      });
+      throw error;
+    }
   };
 
   // Tab counts
@@ -227,6 +281,7 @@ export default function StaffReservistsPage() {
             reservists={filteredReservists}
             onView={handleView}
             onEdit={handleEdit}
+            onChangeAccountStatus={handleChangeAccountStatus}
             // Staff only views and edits, no approval actions
             hideApprovalActions
           />
@@ -252,6 +307,25 @@ export default function StaffReservistsPage() {
         onSuccess={handleEditSuccess}
         reservist={selectedReservist}
       />
+
+      <ChangeAccountStatusModal
+        isOpen={changeStatusModalOpen}
+        onClose={() => {
+          setChangeStatusModalOpen(false);
+          setSelectedReservist(null);
+        }}
+        onChangeStatus={handleChangeStatusSubmit}
+        reservist={selectedReservist}
+      />
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

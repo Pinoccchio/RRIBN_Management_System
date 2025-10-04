@@ -7,6 +7,7 @@ import { DocumentPreviewModal } from '@/components/dashboard/documents/DocumentP
 import { ValidateDocumentModal } from '@/components/dashboard/documents/ValidateDocumentModal';
 import { RejectDocumentModal } from '@/components/dashboard/documents/RejectDocumentModal';
 import { Input } from '@/components/ui/Input';
+import { Toast } from '@/components/ui/Toast';
 import { Search } from 'lucide-react';
 import type { DocumentWithReservist } from '@/lib/types/document';
 import { logger } from '@/lib/logger';
@@ -25,6 +26,9 @@ export default function StaffDocumentsPage() {
   const [validateModalOpen, setValidateModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentWithReservist | null>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Fetch all documents
   const fetchAllDocuments = async () => {
@@ -126,14 +130,26 @@ export default function StaffDocumentsPage() {
 
       if (data.success) {
         logger.success('Document validated successfully', { context: 'StaffDocumentsPage' });
+        setToast({
+          message: 'Document validated successfully!',
+          type: 'success',
+        });
         // Refresh the list
         fetchAllDocuments();
       } else {
         logger.error('Failed to validate document', data.error, { context: 'StaffDocumentsPage' });
+        setToast({
+          message: data.error || 'Failed to validate document',
+          type: 'error',
+        });
         throw new Error(data.error);
       }
     } catch (error) {
       logger.error('Error validating document', error, { context: 'StaffDocumentsPage' });
+      setToast({
+        message: 'An error occurred while validating document',
+        type: 'error',
+      });
       throw error;
     }
   };
@@ -154,14 +170,26 @@ export default function StaffDocumentsPage() {
 
       if (data.success) {
         logger.success('Document rejected successfully', { context: 'StaffDocumentsPage' });
+        setToast({
+          message: 'Document rejected successfully',
+          type: 'success',
+        });
         // Refresh the list
         fetchAllDocuments();
       } else {
         logger.error('Failed to reject document', data.error, { context: 'StaffDocumentsPage' });
+        setToast({
+          message: data.error || 'Failed to reject document',
+          type: 'error',
+        });
         throw new Error(data.error);
       }
     } catch (error) {
       logger.error('Error rejecting document', error, { context: 'StaffDocumentsPage' });
+      setToast({
+        message: 'An error occurred while rejecting document',
+        type: 'error',
+      });
       throw error;
     }
   };
@@ -311,6 +339,15 @@ export default function StaffDocumentsPage() {
         onReject={handleReject}
         document={selectedDocument}
       />
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }
