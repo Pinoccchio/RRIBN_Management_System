@@ -4,34 +4,34 @@ import React, { useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import type { Reservist } from '@/lib/types/reservist';
-import { CheckCircle, User, Mail, Shield } from 'lucide-react';
+import { RefreshCw, User, Mail, Shield, AlertCircle } from 'lucide-react';
 
-interface ApproveReservistModalProps {
+interface ReactivateReservistModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApprove: (reservistId: string) => Promise<void>;
+  onReactivate: (reservistId: string) => Promise<void>;
   reservist: Reservist | null;
 }
 
-export function ApproveReservistModal({
+export function ReactivateReservistModal({
   isOpen,
   onClose,
-  onApprove,
+  onReactivate,
   reservist,
-}: ApproveReservistModalProps) {
-  const [isApproving, setIsApproving] = useState(false);
+}: ReactivateReservistModalProps) {
+  const [isReactivating, setIsReactivating] = useState(false);
 
   if (!reservist) return null;
 
-  const handleApprove = async () => {
+  const handleReactivate = async () => {
     try {
-      setIsApproving(true);
-      await onApprove(reservist.id);
+      setIsReactivating(true);
+      await onReactivate(reservist.id);
       onClose();
     } catch (error) {
-      console.error('Error approving reservist:', error);
+      console.error('Error reactivating reservist:', error);
     } finally {
-      setIsApproving(false);
+      setIsReactivating(false);
     }
   };
 
@@ -39,21 +39,22 @@ export function ApproveReservistModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Approve Reservist Account"
-      description="Confirm approval of this reservist account"
+      title="Reactivate Reservist Account"
+      description="Restore access to a deactivated reservist account"
       size="md"
     >
       <div className="space-y-6">
-        {/* Warning Message */}
+        {/* Info Message */}
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <RefreshCw className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
             <div>
               <h4 className="text-sm font-semibold text-green-900 mb-1">
-                Approve Account
+                Reactivate Account
               </h4>
               <p className="text-sm text-green-700">
-                This action will activate the reservist account and grant access to the mobile application. The reservist will receive a notification.
+                This action will reactivate the account and restore full access to the mobile application.
+                The reservist will receive a notification and can sign in immediately.
               </p>
             </div>
           </div>
@@ -114,13 +115,30 @@ export function ApproveReservistModal({
           </div>
         </div>
 
+        {/* Previous Rejection Reason (if exists) */}
+        {reservist.rejection_reason && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-semibold text-red-900 mb-1">
+                  Previous Deactivation Reason
+                </h4>
+                <p className="text-sm text-red-700">
+                  {reservist.rejection_reason}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Confirmation Text */}
         <div className="text-sm text-gray-700">
-          <p>
-            Are you sure you want to approve this reservist account? Once approved, the reservist will be able to:
+          <p className="mb-2">
+            After reactivation, the reservist will be able to:
           </p>
-          <ul className="list-disc list-inside mt-2 space-y-1 text-gray-600">
-            <li>Sign in to the mobile application</li>
+          <ul className="list-disc list-inside space-y-1 text-gray-600">
+            <li>Sign in to the mobile application immediately</li>
             <li>Access their profile and service records</li>
             <li>Register for training sessions</li>
             <li>Receive announcements and notifications</li>
@@ -132,16 +150,17 @@ export function ApproveReservistModal({
         <Button
           variant="secondary"
           onClick={onClose}
-          disabled={isApproving}
+          disabled={isReactivating}
         >
           Cancel
         </Button>
         <Button
-          variant="success"
-          onClick={handleApprove}
-          disabled={isApproving}
+          variant="primary"
+          onClick={handleReactivate}
+          disabled={isReactivating}
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
-          {isApproving ? 'Approving...' : 'Approve Account'}
+          {isReactivating ? 'Reactivating...' : 'Reactivate Account'}
         </Button>
       </ModalFooter>
     </Modal>

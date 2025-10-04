@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, CheckCircle, XCircle, Clock, Mail, Shield, AlertCircle } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, Mail, Shield, AlertCircle, RotateCcw, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { timeAgo } from '@/lib/design-system/utils';
@@ -12,6 +12,8 @@ interface ReservistTableProps {
   onView: (reservist: Reservist) => void;
   onApprove: (reservist: Reservist) => void;
   onReject: (reservist: Reservist) => void;
+  onRevertToPending?: (reservist: Reservist) => void;
+  onReactivate?: (reservist: Reservist) => void;
 }
 
 export function ReservistTable({
@@ -19,6 +21,8 @@ export function ReservistTable({
   onView,
   onApprove,
   onReject,
+  onRevertToPending,
+  onReactivate,
 }: ReservistTableProps) {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
@@ -164,6 +168,8 @@ export function ReservistTable({
                     >
                       <Eye className="w-4 h-4" />
                     </button>
+
+                    {/* Pending Status Actions */}
                     {reservist.status === 'pending' && (
                       <>
                         <button
@@ -181,6 +187,28 @@ export function ReservistTable({
                           <XCircle className="w-4 h-4" />
                         </button>
                       </>
+                    )}
+
+                    {/* Active Status Actions */}
+                    {reservist.status === 'active' && onRevertToPending && (
+                      <button
+                        onClick={() => onRevertToPending(reservist)}
+                        className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all hover:scale-105"
+                        title="Revert to pending"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {/* Deactivated/Inactive Status Actions */}
+                    {(reservist.status === 'deactivated' || reservist.status === 'inactive') && onReactivate && (
+                      <button
+                        onClick={() => onReactivate(reservist)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all hover:scale-105"
+                        title="Reactivate account"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
                 </td>

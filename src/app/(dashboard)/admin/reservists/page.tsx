@@ -6,6 +6,8 @@ import { ReservistTable } from '@/components/dashboard/reservists/ReservistTable
 import { ViewReservistModal } from '@/components/dashboard/reservists/ViewReservistModal';
 import { ApproveReservistModal } from '@/components/dashboard/reservists/ApproveReservistModal';
 import { RejectReservistModal } from '@/components/dashboard/reservists/RejectReservistModal';
+import { RevertToPendingModal } from '@/components/dashboard/reservists/RevertToPendingModal';
+import { ReactivateReservistModal } from '@/components/dashboard/reservists/ReactivateReservistModal';
 import { Input } from '@/components/ui/Input';
 import { Search, Filter } from 'lucide-react';
 import type { Reservist } from '@/lib/types/reservist';
@@ -24,6 +26,8 @@ export default function ReservistsPage() {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [revertToPendingModalOpen, setRevertToPendingModalOpen] = useState(false);
+  const [reactivateModalOpen, setReactivateModalOpen] = useState(false);
   const [selectedReservist, setSelectedReservist] = useState<Reservist | null>(null);
 
   // Fetch ALL reservists (called once on mount)
@@ -131,6 +135,16 @@ export default function ReservistsPage() {
     setRejectModalOpen(true);
   };
 
+  const handleRevertToPendingClick = (reservist: Reservist) => {
+    setSelectedReservist(reservist);
+    setRevertToPendingModalOpen(true);
+  };
+
+  const handleReactivateClick = (reservist: Reservist) => {
+    setSelectedReservist(reservist);
+    setReactivateModalOpen(true);
+  };
+
   const handleApprove = async (reservistId: string) => {
     try {
       logger.info(`Approving reservist: ${reservistId}`, { context: 'ReservistsPage' });
@@ -183,6 +197,61 @@ export default function ReservistsPage() {
     } catch (error) {
       logger.error('Error rejecting reservist', error, { context: 'ReservistsPage' });
       alert('An error occurred while rejecting the reservist');
+    }
+  };
+
+  const handleRevertToPending = async (reservistId: string, reason: string) => {
+    try {
+      logger.info(`Reverting reservist to pending: ${reservistId}`, { context: 'ReservistsPage', reason });
+
+      const response = await fetch(`/api/admin/reservists/${reservistId}/revert-to-pending`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        logger.success('Reservist reverted to pending successfully', { context: 'ReservistsPage' });
+        // Refresh the list
+        fetchAllReservists();
+      } else {
+        logger.error('Failed to revert reservist to pending', data.error, { context: 'ReservistsPage' });
+        alert(`Failed to revert reservist: ${data.error}`);
+      }
+    } catch (error) {
+      logger.error('Error reverting reservist to pending', error, { context: 'ReservistsPage' });
+      alert('An error occurred while reverting the reservist to pending');
+    }
+  };
+
+  const handleReactivate = async (reservistId: string) => {
+    try {
+      logger.info(`Reactivating reservist: ${reservistId}`, { context: 'ReservistsPage' });
+
+      const response = await fetch(`/api/admin/reservists/${reservistId}/reactivate`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        logger.success('Reservist reactivated successfully', { context: 'ReservistsPage' });
+        // Refresh the list
+        fetchAllReservists();
+      } else {
+        logger.error('Failed to reactivate reservist', data.error, { context: 'ReservistsPage' });
+        alert(`Failed to reactivate reservist: ${data.error}`);
+      }
+    } catch (error) {
+      logger.error('Error reactivating reservist', error, { context: 'ReservistsPage' });
+      alert('An error occurred while reactivating the reservist');
     }
   };
 
@@ -276,6 +345,8 @@ export default function ReservistsPage() {
             onView={handleView}
             onApprove={handleApproveClick}
             onReject={handleRejectClick}
+            onRevertToPending={handleRevertToPendingClick}
+            onReactivate={handleReactivateClick}
           />
         )}
       </div>
@@ -307,6 +378,26 @@ export default function ReservistsPage() {
           setSelectedReservist(null);
         }}
         onReject={handleReject}
+        reservist={selectedReservist}
+      />
+
+      <RevertToPendingModal
+        isOpen={revertToPendingModalOpen}
+        onClose={() => {
+          setRevertToPendingModalOpen(false);
+          setSelectedReservist(null);
+        }}
+        onRevert={handleRevertToPending}
+        reservist={selectedReservist}
+      />
+
+      <ReactivateReservistModal
+        isOpen={reactivateModalOpen}
+        onClose={() => {
+          setReactivateModalOpen(false);
+          setSelectedReservist(null);
+        }}
+        onReactivate={handleReactivate}
         reservist={selectedReservist}
       />
     </div>

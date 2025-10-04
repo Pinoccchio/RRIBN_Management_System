@@ -142,7 +142,7 @@ export function RejectReservistModal({
           Cancel
         </Button>
         <Button
-          variant="error"
+          variant="danger"
           onClick={handleReject}
           disabled={isRejecting}
         >
