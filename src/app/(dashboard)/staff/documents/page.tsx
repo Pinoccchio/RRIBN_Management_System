@@ -6,10 +6,11 @@ import { DocumentsTable } from '@/components/dashboard/documents/DocumentsTable'
 import { DocumentPreviewModal } from '@/components/dashboard/documents/DocumentPreviewModal';
 import { ValidateDocumentModal } from '@/components/dashboard/documents/ValidateDocumentModal';
 import { RejectDocumentModal } from '@/components/dashboard/documents/RejectDocumentModal';
+import { ChangeDocumentStatusModal } from '@/components/dashboard/documents/ChangeDocumentStatusModal';
 import { Input } from '@/components/ui/Input';
 import { Toast } from '@/components/ui/Toast';
 import { Search } from 'lucide-react';
-import type { DocumentWithReservist } from '@/lib/types/document';
+import type { DocumentWithReservist, DocumentStatus } from '@/lib/types/document';
 import { logger } from '@/lib/logger';
 
 type TabType = 'all' | 'pending' | 'verified' | 'rejected';
@@ -25,6 +26,7 @@ export default function StaffDocumentsPage() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [validateModalOpen, setValidateModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [changeStatusModalOpen, setChangeStatusModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<DocumentWithReservist | null>(null);
 
   // Toast state
@@ -112,6 +114,51 @@ export default function StaffDocumentsPage() {
   const handleRejectClick = (document: DocumentWithReservist) => {
     setSelectedDocument(document);
     setRejectModalOpen(true);
+  };
+
+  const handleChangeStatusClick = (document: DocumentWithReservist) => {
+    setSelectedDocument(document);
+    setChangeStatusModalOpen(true);
+  };
+
+  const handleChangeStatus = async (documentId: string, newStatus: DocumentStatus, reason: string, notes?: string) => {
+    try {
+      logger.info(`Changing document status: ${documentId} to ${newStatus}`, { context: 'StaffDocumentsPage', reason });
+
+      const response = await fetch(`/api/staff/documents/${documentId}/change-status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ new_status: newStatus, reason, notes }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        logger.success(`Document status changed to ${newStatus} successfully`, { context: 'StaffDocumentsPage' });
+        setToast({
+          message: `Document status changed to ${newStatus} successfully!`,
+          type: 'success',
+        });
+        // Refresh the list
+        fetchAllDocuments();
+      } else {
+        logger.error('Failed to change document status', data.error, { context: 'StaffDocumentsPage' });
+        setToast({
+          message: data.error || 'Failed to change document status',
+          type: 'error',
+        });
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      logger.error('Error changing document status', error, { context: 'StaffDocumentsPage' });
+      setToast({
+        message: 'An error occurred while changing document status',
+        type: 'error',
+      });
+      throw error;
+    }
   };
 
   const handleValidate = async (documentId: string, notes?: string) => {
@@ -304,6 +351,7 @@ export default function StaffDocumentsPage() {
             onView={handleView}
             onValidate={handleValidateClick}
             onReject={handleRejectClick}
+            onChangeStatus={handleChangeStatusClick}
           />
         )}
       </div>
@@ -318,6 +366,7 @@ export default function StaffDocumentsPage() {
         document={selectedDocument}
         onValidate={handleValidateClick}
         onReject={handleRejectClick}
+        onChangeStatus={handleChangeStatusClick}
       />
 
       <ValidateDocumentModal
@@ -337,6 +386,16 @@ export default function StaffDocumentsPage() {
           setSelectedDocument(null);
         }}
         onReject={handleReject}
+        document={selectedDocument}
+      />
+
+      <ChangeDocumentStatusModal
+        isOpen={changeStatusModalOpen}
+        onClose={() => {
+          setChangeStatusModalOpen(false);
+          setSelectedDocument(null);
+        }}
+        onChangeStatus={handleChangeStatus}
         document={selectedDocument}
       />
 

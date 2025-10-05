@@ -58,6 +58,15 @@ export interface RejectDocumentInput {
 }
 
 /**
+ * Input for changing document status (Admin/Super Admin only)
+ */
+export interface ChangeStatusInput {
+  new_status: DocumentStatus;
+  reason: string;
+  notes?: string;
+}
+
+/**
  * Filters for document queries
  */
 export interface DocumentFilters {

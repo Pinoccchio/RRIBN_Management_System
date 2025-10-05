@@ -102,3 +102,25 @@ export function TrainingStatusBadge({ status, size = 'md' }: TrainingStatusBadge
     </Badge>
   );
 }
+
+// Document Status Badge Component
+interface DocumentStatusBadgeProps {
+  status: 'pending' | 'verified' | 'rejected';
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export function DocumentStatusBadge({ status, size = 'md' }: DocumentStatusBadgeProps) {
+  const statusConfig = {
+    pending: { variant: 'pending' as BadgeVariant, label: 'Pending' },
+    verified: { variant: 'success' as BadgeVariant, label: 'Verified' },
+    rejected: { variant: 'error' as BadgeVariant, label: 'Rejected' },
+  };
+
+  const config = statusConfig[status];
+
+  return (
+    <Badge variant={config.variant} size={size}>
+      {config.label}
+    </Badge>
+  );
+}

@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Eye, CheckCircle, XCircle, Clock, FileText, User } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/Badge';
-import { timeAgo } from '@/lib/design-system/utils';
+import { Eye, CheckCircle, XCircle, Clock, FileText, User, RefreshCw } from 'lucide-react';
+import { DocumentStatusBadge } from '@/components/ui/Badge';
+import { formatManilaTime } from '@/lib/utils/timezone';
+import { getDocumentTypeDisplayName } from '@/lib/utils/document-types';
 import type { DocumentWithReservist } from '@/lib/types/document';
 
 interface DocumentsTableProps {
@@ -11,6 +12,7 @@ interface DocumentsTableProps {
   onView: (document: DocumentWithReservist) => void;
   onValidate: (document: DocumentWithReservist) => void;
   onReject: (document: DocumentWithReservist) => void;
+  onChangeStatus: (document: DocumentWithReservist) => void;
 }
 
 export function DocumentsTable({
@@ -18,16 +20,8 @@ export function DocumentsTable({
   onView,
   onValidate,
   onReject,
+  onChangeStatus,
 }: DocumentsTableProps) {
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, 'pending' | 'active' | 'inactive' | 'deactivated'> = {
-      pending: 'pending',
-      verified: 'active',
-      rejected: 'deactivated',
-    };
-    return <StatusBadge status={statusMap[status] || 'pending'} size="sm" />;
-  };
-
   if (documents.length === 0) {
     return (
       <div className="p-12 text-center">
@@ -90,7 +84,7 @@ export function DocumentsTable({
                   <div className="flex items-center">
                     <FileText className="w-4 h-4 text-gray-400 mr-2" />
                     <div>
-                      <div className="text-sm font-medium text-navy-900">{document.document_type}</div>
+                      <div className="text-sm font-medium text-navy-900">{getDocumentTypeDisplayName(document.document_type)}</div>
                       <div className="text-xs text-gray-500">{document.file_name}</div>
                     </div>
                   </div>
@@ -98,10 +92,16 @@ export function DocumentsTable({
 
                 {/* Status */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(document.status)}
+                  <DocumentStatusBadge status={document.status} size="sm" />
                   {document.validated_at && (
                     <div className="text-xs text-gray-500 mt-1">
-                      {timeAgo(document.validated_at)}
+                      {formatManilaTime(document.validated_at, {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
                     </div>
                   )}
                 </td>
@@ -110,7 +110,22 @@ export function DocumentsTable({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-1.5 text-gray-400" />
-                    <span className="font-medium">{timeAgo(document.created_at)}</span>
+                    <div>
+                      <div className="font-medium">
+                        {formatManilaTime(document.created_at, {
+                          month: '2-digit',
+                          day: '2-digit',
+                          year: 'numeric',
+                        })}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        at {formatManilaTime(document.created_at, {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </td>
 
@@ -125,7 +140,16 @@ export function DocumentsTable({
                       <Eye className="w-4 h-4" />
                     </button>
 
-                    {/* Pending Status Actions */}
+                    {/* Change Status - Available for all documents */}
+                    <button
+                      onClick={() => onChangeStatus(document)}
+                      className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all hover:scale-105"
+                      title="Change document status"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+
+                    {/* Pending Status Quick Actions */}
                     {document.status === 'pending' && (
                       <>
                         <button

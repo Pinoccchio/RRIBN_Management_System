@@ -3,8 +3,11 @@
 import React from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { DocumentStatusBadge } from '@/components/ui/Badge';
 import type { DocumentWithReservist } from '@/lib/types/document';
-import { FileText, User, Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { formatManilaTime } from '@/lib/utils/timezone';
+import { getDocumentTypeDisplayName } from '@/lib/utils/document-types';
+import { FileText, User, Calendar } from 'lucide-react';
 
 interface DocumentPreviewModalProps {
   isOpen: boolean;
@@ -12,6 +15,7 @@ interface DocumentPreviewModalProps {
   document: DocumentWithReservist | null;
   onValidate?: (document: DocumentWithReservist) => void;
   onReject?: (document: DocumentWithReservist) => void;
+  onChangeStatus?: (document: DocumentWithReservist) => void;
 }
 
 export function DocumentPreviewModal({
@@ -20,41 +24,12 @@ export function DocumentPreviewModal({
   document,
   onValidate,
   onReject,
+  onChangeStatus,
 }: DocumentPreviewModalProps) {
   if (!document) return null;
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return 'text-green-600 bg-green-50';
-      case 'rejected':
-        return 'text-red-600 bg-red-50';
-      default:
-        return 'text-yellow-600 bg-yellow-50';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return <CheckCircle className="w-5 h-5" />;
-      case 'rejected':
-        return <XCircle className="w-5 h-5" />;
-      default:
-        return <Clock className="w-5 h-5" />;
-    }
-  };
+  // Get the actual file URL - prioritize signed URL over file URL
+  const fileUrl = (document as any).signed_url || document.file_url;
 
   const isPDF = document.mime_type === 'application/pdf';
   const isImage = document.mime_type?.startsWith('image/');
@@ -65,7 +40,7 @@ export function DocumentPreviewModal({
       onClose={onClose}
       size="xl"
       title="Document Preview"
-      description={`Viewing ${document.document_type}`}
+      description={`Viewing ${getDocumentTypeDisplayName(document.document_type)}`}
     >
       <div className="space-y-6">
         {/* Document Info */}
@@ -88,7 +63,7 @@ export function DocumentPreviewModal({
               <FileText className="w-4 h-4 mr-2" />
               Document Details
             </div>
-            <div className="font-semibold text-navy-900">{document.document_type}</div>
+            <div className="font-semibold text-navy-900">{getDocumentTypeDisplayName(document.document_type)}</div>
             <div className="text-sm text-gray-600">{document.file_name}</div>
           </div>
 
@@ -97,15 +72,12 @@ export function DocumentPreviewModal({
               <Calendar className="w-4 h-4 mr-2" />
               Submitted
             </div>
-            <div className="text-sm font-medium text-navy-900">{formatDate(document.created_at)}</div>
+            <div className="text-sm font-medium text-navy-900">{formatManilaTime(document.created_at)}</div>
           </div>
 
           <div>
             <div className="text-sm text-gray-600 mb-1">Status</div>
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full font-medium ${getStatusColor(document.status)}`}>
-              {getStatusIcon(document.status)}
-              {document.status.charAt(0).toUpperCase() + document.status.slice(1)}
-            </div>
+            <DocumentStatusBadge status={document.status} />
           </div>
         </div>
 
@@ -122,7 +94,7 @@ export function DocumentPreviewModal({
               )}
               <div>
                 <span className="text-gray-600">Date:</span>{' '}
-                <span className="font-medium">{formatDate(document.validated_at)}</span>
+                <span className="font-medium">{formatManilaTime(document.validated_at)}</span>
               </div>
               {document.notes && (
                 <div>
@@ -145,7 +117,7 @@ export function DocumentPreviewModal({
           <div className="p-3 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Document Preview</span>
             <a
-              href={document.file_url}
+              href={fileUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-blue-600 hover:text-blue-800 underline"
@@ -156,14 +128,14 @@ export function DocumentPreviewModal({
           <div className="p-4 max-h-[500px] overflow-auto bg-white">
             {isImage && (
               <img
-                src={document.file_url}
+                src={fileUrl}
                 alt={document.document_type}
                 className="max-w-full h-auto mx-auto rounded"
               />
             )}
             {isPDF && (
               <iframe
-                src={document.file_url}
+                src={fileUrl}
                 className="w-full h-[500px] border-0"
                 title={document.document_type}
               />
@@ -173,7 +145,7 @@ export function DocumentPreviewModal({
                 <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                 <p className="text-gray-600 mb-4">Preview not available for this file type.</p>
                 <a
-                  href={document.file_url}
+                  href={fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 underline"
@@ -190,6 +162,23 @@ export function DocumentPreviewModal({
           <Button type="button" variant="outline" onClick={onClose}>
             Close
           </Button>
+
+          {/* Change Status - Available for all documents */}
+          {onChangeStatus && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onChangeStatus(document);
+                onClose();
+              }}
+              className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+            >
+              Change Status
+            </Button>
+          )}
+
+          {/* Quick Actions for Pending Documents */}
           {document.status === 'pending' && onValidate && onReject && (
             <>
               <Button

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { addSignedUrlsToDocuments } from '@/lib/utils/storage';
 import type { DocumentWithReservist, PaginatedDocumentsResponse } from '@/lib/types/document';
 
 /**
@@ -186,8 +187,12 @@ export async function GET(request: NextRequest) {
       } : null,
     }));
 
+    // Generate signed URLs for secure, time-limited access to documents
+    logger.debug('Generating signed URLs for documents...');
+    const documentsWithSignedUrls = await addSignedUrlsToDocuments(documents, 3600); // 1 hour expiry
+
     const response: PaginatedDocumentsResponse = {
-      data: documents,
+      data: documentsWithSignedUrls,
       pagination: {
         page,
         limit,

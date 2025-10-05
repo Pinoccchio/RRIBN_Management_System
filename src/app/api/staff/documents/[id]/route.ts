@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { addSignedUrlToDocument } from '@/lib/utils/storage';
 import type { DocumentWithReservist } from '@/lib/types/document';
 
 /**
@@ -123,9 +124,14 @@ export async function GET(
     };
 
     logger.success(`Fetched document details: ${data.document_type}`);
+
+    // Generate signed URL for secure, time-limited access to document
+    logger.debug('Generating signed URL for document...');
+    const documentWithSignedUrl = await addSignedUrlToDocument(document, 3600); // 1 hour expiry
+
     logger.separator();
 
-    return NextResponse.json({ success: true, data: document });
+    return NextResponse.json({ success: true, data: documentWithSignedUrl });
   } catch (error) {
     logger.error('Unexpected API error', error);
     logger.separator();

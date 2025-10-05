@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-import type { ValidateDocumentInput } from '@/lib/types/document';
+import { addSignedUrlToDocument } from '@/lib/utils/storage';
+import type { ValidateDocumentInput, DocumentWithReservist } from '@/lib/types/document';
 
 /**
  * PUT /api/staff/documents/[id]/validate
@@ -65,6 +66,16 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Forbidden - Document not in your assigned companies' }, { status: 403 });
     }
 
+    // Security check: Only pending documents can be validated via this endpoint
+    // (Use change-status endpoint for other status transitions)
+    if (document.status !== 'pending') {
+      logger.warn(`Validation attempted on non-pending document (status: ${document.status})`);
+      return NextResponse.json({
+        success: false,
+        error: `Cannot validate document with status '${document.status}'. Only pending documents can be validated.`
+      }, { status: 400 });
+    }
+
     // Parse request body
     const body: ValidateDocumentInput = await request.json();
 
@@ -103,8 +114,83 @@ export async function PUT(
       });
 
     logger.success(`Successfully validated document: ${params.id}`);
-    logger.separator();
 
+    // Fetch updated document with reservist details
+    logger.dbQuery('SELECT', 'documents', `Fetching updated document: ${params.id}`);
+    const { data: updatedDoc } = await supabase
+      .from('documents')
+      .select(`
+        *,
+        reservist:accounts!documents_reservist_id_fkey (
+          email,
+          profiles!inner (
+            first_name,
+            middle_name,
+            last_name
+          ),
+          reservist_details!inner (
+            company,
+            rank,
+            service_number
+          )
+        ),
+        validator:accounts!documents_validated_by_fkey (
+          profiles (
+            first_name,
+            last_name
+          )
+        )
+      `)
+      .eq('id', params.id)
+      .single();
+
+    if (updatedDoc) {
+      // Transform to DocumentWithReservist
+      const documentData: DocumentWithReservist = {
+        id: updatedDoc.id,
+        reservist_id: updatedDoc.reservist_id,
+        document_type: updatedDoc.document_type,
+        file_url: updatedDoc.file_url,
+        file_name: updatedDoc.file_name,
+        file_size: updatedDoc.file_size,
+        mime_type: updatedDoc.mime_type,
+        status: updatedDoc.status,
+        validated_by: updatedDoc.validated_by,
+        validated_at: updatedDoc.validated_at,
+        rejection_reason: updatedDoc.rejection_reason,
+        notes: updatedDoc.notes,
+        version: updatedDoc.version,
+        is_current: updatedDoc.is_current,
+        created_at: updatedDoc.created_at,
+        updated_at: updatedDoc.updated_at,
+        reservist: {
+          first_name: updatedDoc.reservist?.profiles?.first_name || '',
+          middle_name: updatedDoc.reservist?.profiles?.middle_name,
+          last_name: updatedDoc.reservist?.profiles?.last_name || '',
+          email: updatedDoc.reservist?.email || '',
+          company: updatedDoc.reservist?.reservist_details?.company,
+          rank: updatedDoc.reservist?.reservist_details?.rank,
+          service_number: updatedDoc.reservist?.reservist_details?.service_number || '',
+        },
+        validator: updatedDoc.validator?.profiles ? {
+          first_name: updatedDoc.validator.profiles.first_name,
+          last_name: updatedDoc.validator.profiles.last_name,
+        } : null,
+      };
+
+      // Generate signed URL for secure access
+      logger.debug('Generating signed URL for validated document...');
+      const documentWithSignedUrl = await addSignedUrlToDocument(documentData, 3600);
+
+      logger.separator();
+      return NextResponse.json({
+        success: true,
+        message: 'Document validated successfully',
+        data: documentWithSignedUrl
+      });
+    }
+
+    logger.separator();
     return NextResponse.json({ success: true, message: 'Document validated successfully' });
   } catch (error) {
     logger.error('Unexpected API error', error);
