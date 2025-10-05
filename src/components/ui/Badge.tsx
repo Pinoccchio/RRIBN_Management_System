@@ -79,3 +79,26 @@ export function RoleBadge({ role, size = 'md' }: RoleBadgeProps) {
     </Badge>
   );
 }
+
+// Training Status Badge Component
+interface TrainingStatusBadgeProps {
+  status: 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export function TrainingStatusBadge({ status, size = 'md' }: TrainingStatusBadgeProps) {
+  const statusConfig = {
+    scheduled: { variant: 'pending' as BadgeVariant, label: 'Scheduled' },
+    ongoing: { variant: 'info' as BadgeVariant, label: 'Ongoing' },
+    completed: { variant: 'success' as BadgeVariant, label: 'Completed' },
+    cancelled: { variant: 'error' as BadgeVariant, label: 'Cancelled' },
+  };
+
+  const config = statusConfig[status];
+
+  return (
+    <Badge variant={config.variant} size={size}>
+      {config.label}
+    </Badge>
+  );
+}

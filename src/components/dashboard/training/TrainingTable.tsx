@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Eye, Edit, UserCheck, Award, GraduationCap, MapPin, Users, Calendar, Trash2 } from 'lucide-react';
-import { StatusBadge } from '@/components/ui/Badge';
+import { TrainingStatusBadge } from '@/components/ui/Badge';
 import { timeAgo, formatDate } from '@/lib/design-system/utils';
 import type { TrainingWithStats } from '@/lib/types/training';
 
@@ -23,16 +23,6 @@ export function TrainingTable({
   onComplete,
   onDelete,
 }: TrainingTableProps) {
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, 'pending' | 'active' | 'inactive' | 'deactivated'> = {
-      scheduled: 'pending',
-      ongoing: 'active',
-      completed: 'inactive',
-      cancelled: 'deactivated',
-    };
-    return <StatusBadge status={statusMap[status] || 'pending'} size="sm" />;
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -171,7 +161,7 @@ export function TrainingTable({
 
                   {/* Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(training.status)}
+                    <TrainingStatusBadge status={training.status} size="sm" />
                     {isPast && training.status === 'scheduled' && (
                       <div className="text-xs text-orange-600 mt-1">⚠️ Overdue</div>
                     )}

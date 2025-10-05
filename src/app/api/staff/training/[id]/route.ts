@@ -10,8 +10,9 @@ import type { UpdateTrainingInput } from '@/lib/types/training';
  *
  * Returns: Training session details
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Authenticate user
@@ -58,11 +59,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const { data, error } = await supabase
       .from('training_sessions')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error) {
-      logger.error('Failed to fetch training session', error, { trainingId: params.id });
+      logger.error('Failed to fetch training session', error, { trainingId: id });
       return NextResponse.json({ success: false, error: 'Training session not found' }, { status: 404 });
     }
 
@@ -76,9 +77,95 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ success: false, error: 'Access denied - Company not assigned' }, { status: 403 });
     }
 
-    logger.success('Fetched training session details', { userId: user.id, trainingId: params.id });
+    // Fetch registration statistics
+    const { data: registrations } = await supabase
+      .from('training_registrations')
+      .select('status, completion_status')
+      .eq('training_session_id', id);
 
-    return NextResponse.json({ success: true, data });
+    const stats = {
+      registration_count:
+        registrations?.filter(
+          (r) => r.status === 'registered' || r.status === 'attended' || r.status === 'completed'
+        ).length || 0,
+      attended_count: registrations?.filter((r) => r.status === 'attended' || r.status === 'completed').length || 0,
+      completed_count: registrations?.filter((r) => r.status === 'completed').length || 0,
+      passed_count: registrations?.filter((r) => r.completion_status === 'passed').length || 0,
+      failed_count: registrations?.filter((r) => r.completion_status === 'failed').length || 0,
+      pending_count:
+        registrations?.filter((r) => r.completion_status === 'pending' || r.completion_status === null).length || 0,
+    };
+
+    // Fetch registrations with reservist details
+    const { data: registrationsWithDetails, error: regError } = await supabase
+      .from('training_registrations')
+      .select(
+        `
+        id,
+        training_session_id,
+        reservist_id,
+        status,
+        attended_at,
+        completion_status,
+        certificate_url,
+        notes,
+        created_at,
+        updated_at,
+        reservist:accounts!training_registrations_reservist_id_fkey(
+          email,
+          profiles!inner(
+            first_name,
+            last_name,
+            middle_name
+          ),
+          reservist_details!inner(
+            service_number,
+            rank,
+            company
+          )
+        )
+      `
+      )
+      .eq('training_session_id', id);
+
+    if (regError) {
+      logger.error('Failed to fetch training registrations', regError, { trainingId: id });
+      // Continue without registrations rather than failing completely
+    }
+
+    // Transform the data to match RegistrationWithReservist type
+    const formattedRegistrations = (registrationsWithDetails || []).map((reg: any) => ({
+      id: reg.id,
+      training_session_id: reg.training_session_id,
+      reservist_id: reg.reservist_id,
+      status: reg.status,
+      attended_at: reg.attended_at,
+      completion_status: reg.completion_status,
+      certificate_url: reg.certificate_url,
+      notes: reg.notes,
+      created_at: reg.created_at,
+      updated_at: reg.updated_at,
+      reservist: {
+        first_name: reg.reservist.profiles.first_name,
+        last_name: reg.reservist.profiles.last_name,
+        middle_name: reg.reservist.profiles.middle_name,
+        email: reg.reservist.email,
+        service_number: reg.reservist.reservist_details.service_number,
+        rank: reg.reservist.reservist_details.rank,
+        company: reg.reservist.reservist_details.company,
+      },
+    }));
+
+    logger.success('Fetched training session details', { userId: user.id, trainingId: id });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...data,
+        ...stats,
+        registrations: formattedRegistrations,
+      },
+    });
   } catch (error) {
     logger.error('Unexpected error in GET /api/staff/training/[id]', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
@@ -94,8 +181,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  *
  * Returns: Updated training session
  */
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Authenticate user
@@ -142,11 +230,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { data: existingTraining, error: fetchError } = await supabase
       .from('training_sessions')
       .select('company')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (fetchError) {
-      logger.error('Failed to fetch training session for update', fetchError, { trainingId: params.id });
+      logger.error('Failed to fetch training session for update', fetchError, { trainingId: id });
       return NextResponse.json({ success: false, error: 'Training session not found' }, { status: 404 });
     }
 
@@ -203,7 +291,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     logger.info('Updating training session', {
       userId: user.id,
-      trainingId: params.id,
+      trainingId: id,
       updates: Object.keys(body),
     });
 
@@ -223,18 +311,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(body.status !== undefined && { status: body.status }),
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      logger.error('Failed to update training session', error, { userId: user.id, trainingId: params.id });
+      logger.error('Failed to update training session', error, { userId: user.id, trainingId: id });
       return NextResponse.json({ success: false, error: 'Failed to update training session' }, { status: 500 });
     }
 
     logger.success('Training session updated successfully', {
       userId: user.id,
-      trainingId: params.id,
+      trainingId: id,
       title: data.title,
     });
 
@@ -258,8 +346,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
  *
  * Returns: Success message
  */
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
 
     // Authenticate user
@@ -306,11 +395,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { data: training, error: fetchError } = await supabase
       .from('training_sessions')
       .select('id, title, company, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (fetchError) {
-      logger.error('Failed to fetch training session for deletion', fetchError, { trainingId: params.id });
+      logger.error('Failed to fetch training session for deletion', fetchError, { trainingId: id });
       return NextResponse.json({ success: false, error: 'Training session not found' }, { status: 404 });
     }
 
@@ -328,7 +417,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (training.status === 'completed') {
       logger.warn('Attempted to delete completed training', {
         userId: user.id,
-        trainingId: params.id,
+        trainingId: id,
         status: training.status,
       });
       return NextResponse.json(
@@ -341,18 +430,18 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { data: hoursData, error: hoursError } = await supabase
       .from('training_hours')
       .select('id')
-      .eq('training_session_id', params.id)
+      .eq('training_session_id', id)
       .limit(1);
 
     if (hoursError) {
-      logger.error('Failed to check training hours', hoursError, { trainingId: params.id });
+      logger.error('Failed to check training hours', hoursError, { trainingId: id });
       return NextResponse.json({ success: false, error: 'Failed to verify training hours' }, { status: 500 });
     }
 
     if (hoursData && hoursData.length > 0) {
       logger.warn('Attempted to delete training with awarded hours', {
         userId: user.id,
-        trainingId: params.id,
+        trainingId: id,
       });
       return NextResponse.json(
         { success: false, error: 'Cannot delete training with awarded hours. These records are required for promotion analytics.' },
@@ -362,7 +451,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     logger.info('Deleting training session', {
       userId: user.id,
-      trainingId: params.id,
+      trainingId: id,
       title: training.title,
     });
 
@@ -370,10 +459,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { error: registrationsDeleteError } = await supabase
       .from('training_registrations')
       .delete()
-      .eq('training_session_id', params.id);
+      .eq('training_session_id', id);
 
     if (registrationsDeleteError) {
-      logger.error('Failed to delete training registrations', registrationsDeleteError, { trainingId: params.id });
+      logger.error('Failed to delete training registrations', registrationsDeleteError, { trainingId: id });
       return NextResponse.json({ success: false, error: 'Failed to delete training registrations' }, { status: 500 });
     }
 
@@ -381,16 +470,16 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { error: deleteError } = await supabase
       .from('training_sessions')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (deleteError) {
-      logger.error('Failed to delete training session', deleteError, { userId: user.id, trainingId: params.id });
+      logger.error('Failed to delete training session', deleteError, { userId: user.id, trainingId: id });
       return NextResponse.json({ success: false, error: 'Failed to delete training session' }, { status: 500 });
     }
 
     logger.success('Training session deleted successfully', {
       userId: user.id,
-      trainingId: params.id,
+      trainingId: id,
       title: training.title,
     });
 

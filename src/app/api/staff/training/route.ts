@@ -144,7 +144,10 @@ export async function GET(request: NextRequest) {
           .eq('training_session_id', training.id);
 
         const stats = {
-          registration_count: registrations?.length || 0,
+          // Only count active registrations (exclude 'cancelled' and 'no_show')
+          registration_count: registrations?.filter((r) =>
+            r.status === 'registered' || r.status === 'attended' || r.status === 'completed'
+          ).length || 0,
           attended_count: registrations?.filter((r) => r.status === 'attended' || r.status === 'completed').length || 0,
           completed_count: registrations?.filter((r) => r.status === 'completed').length || 0,
           passed_count: registrations?.filter((r) => r.completion_status === 'passed').length || 0,

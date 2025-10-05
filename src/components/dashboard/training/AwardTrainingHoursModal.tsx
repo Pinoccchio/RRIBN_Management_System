@@ -27,6 +27,24 @@ export function AwardTrainingHoursModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Calculate duration from training schedule on mount
+  useEffect(() => {
+    if (training) {
+      // Auto-calculate hours from scheduled_date to end_date
+      if (training.scheduled_date && training.end_date) {
+        const scheduledDate = new Date(training.scheduled_date);
+        const endDate = new Date(training.end_date);
+        const durationMs = endDate.getTime() - scheduledDate.getTime();
+        const durationHours = Math.round(durationMs / (1000 * 60 * 60)); // Convert to hours
+
+        // Use calculated hours if valid, otherwise default to 8
+        if (durationHours > 0 && durationHours <= 720) {
+          setDefaultHours(durationHours);
+        }
+      }
+    }
+  }, [training]);
+
   useEffect(() => {
     if (training && training.registrations) {
       // Initialize awards for attended reservists
