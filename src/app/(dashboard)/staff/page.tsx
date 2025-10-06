@@ -2,287 +2,374 @@
 
 import React, { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/dashboard/shared/PageHeader';
-import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/dashboard/stats/StatCard';
-import { StatCardData } from '@/lib/types/dashboard';
-import { Shield, FileCheck, GraduationCap, ClipboardList, Activity } from 'lucide-react';
-import { CompanyBadgeList } from '@/components/ui/CompanyBadge';
-
-interface StaffData {
-  firstName: string;
-  lastName: string;
-  assignedCompanies: string[];
-  position: string | null;
-  employeeId: string | null;
-}
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import {
+  Users,
+  UserCheck,
+  FileText,
+  Calendar,
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Megaphone
+} from 'lucide-react';
+import { format } from 'date-fns';
+import type { StatCardData } from '@/lib/types/dashboard';
 
 interface DashboardStats {
   totalReservists: number;
+  activeReservists: number;
   pendingDocuments: number;
   upcomingTrainings: number;
+  urgentAnnouncements: number;
   pendingActions: number;
 }
 
-interface RecentActivity {
+interface Reservist {
   id: string;
-  action: string;
-  entityType: string;
-  userName: string;
-  timestamp: string;
+  firstName: string;
+  lastName: string;
+  rank: string;
+  company: string;
+  reservistStatus: string;
+  accountStatus: string;
+}
+
+interface TrainingSession {
+  id: string;
+  title: string;
+  company: string | null;
+  scheduledDate: string;
+  status: string;
+  trainingCategory: string | null;
+  capacity: number | null;
+}
+
+interface Document {
+  id: string;
+  documentType: string;
+  status: string;
+  createdAt: string;
+  reservistName: string;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: string;
+  publishedAt: string;
 }
 
 export default function StaffDashboardPage() {
-  const [staffData, setStaffData] = useState<StaffData | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingActivity, setIsLoadingActivity] = useState(true);
+  const [reservists, setReservists] = useState<Reservist[]>([]);
+  const [trainings, setTrainings] = useState<TrainingSession[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch staff details, stats, and recent activity in parallel
-        const [staffResponse, statsResponse, activityResponse] = await Promise.all([
-          fetch('/api/staff/me'),
-          fetch('/api/staff/stats'),
-          fetch('/api/staff/recent-activity'),
-        ]);
-
-        if (staffResponse.ok) {
-          const staffResult = await staffResponse.json();
-          if (staffResult.success) {
-            setStaffData(staffResult.data);
-          }
-        }
-
-        if (statsResponse.ok) {
-          const statsResult = await statsResponse.json();
-          if (statsResult.success) {
-            setStats(statsResult.data);
-          }
-        }
-
-        if (activityResponse.ok) {
-          const activityResult = await activityResponse.json();
-          if (activityResult.success) {
-            setRecentActivity(activityResult.data);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setIsLoading(false);
-        setIsLoadingActivity(false);
-      }
-    };
-
-    fetchData();
+    fetchDashboardData();
   }, []);
 
-  // Format timestamp for display
-  const formatTimestamp = (timestamp: string): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      // Fetch stats
+      const statsRes = await fetch('/api/staff/dashboard-stats');
+      const statsData = await statsRes.json();
+      if (statsData.success) {
+        setStats(statsData.data);
+      }
 
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      // Fetch reservists
+      const reservistsRes = await fetch('/api/staff/reservists');
+      const reservistsData = await reservistsRes.json();
+      if (reservistsData.success) {
+        // Transform nested data to flat structure for dashboard
+        const transformedReservists = (reservistsData.data || []).map((r: any) => ({
+          id: r.id,
+          firstName: r.profile?.first_name || '',
+          lastName: r.profile?.last_name || '',
+          rank: r.reservist_details?.rank || '',
+          company: r.reservist_details?.company || '',
+          reservistStatus: r.reservist_details?.reservist_status || '',
+          accountStatus: r.status || '',
+        }));
+        setReservists(transformedReservists.slice(0, 5)); // Top 5
+      }
+
+      // Fetch training sessions
+      const trainingsRes = await fetch('/api/staff/training-sessions');
+      const trainingsData = await trainingsRes.json();
+      if (trainingsData.success) {
+        setTrainings(trainingsData.data.filter((t: TrainingSession) =>
+          ['scheduled', 'ongoing'].includes(t.status)
+        ).slice(0, 4)); // Top 4 upcoming
+      }
+
+      // Fetch documents
+      const docsRes = await fetch('/api/staff/documents?status=pending&limit=100');
+      const docsData = await docsRes.json();
+      if (docsData.success) {
+        // Transform nested data to flat structure for dashboard
+        const transformedDocuments = (docsData.data || []).map((d: any) => ({
+          id: d.id,
+          documentType: d.document_type || '',
+          status: d.status || '',
+          createdAt: d.created_at || '',
+          reservistName: d.reservist
+            ? `${d.reservist.first_name} ${d.reservist.last_name}`.trim()
+            : 'Unknown',
+        }));
+        setDocuments(transformedDocuments.slice(0, 5)); // Top 5 pending
+      }
+
+      // Fetch announcements
+      const announcementsRes = await fetch('/api/staff/announcements?status=active&limit=100');
+      const announcementsData = await announcementsRes.json();
+      if (announcementsData.success) {
+        // Transform snake_case to camelCase for dashboard
+        const transformedAnnouncements = (announcementsData.data || []).map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          content: a.content,
+          priority: a.priority,
+          publishedAt: a.published_at || a.created_at,
+        }));
+        setAnnouncements(transformedAnnouncements.slice(0, 5)); // Top 5
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Format activity action for display
-  const formatAction = (activity: RecentActivity): string => {
-    const actionMap: Record<string, string> = {
-      'CREATE': 'created',
-      'UPDATE': 'updated',
-      'DELETE': 'deleted',
-      'SUBMIT': 'submitted',
-      'APPROVE': 'approved',
-      'REJECT': 'rejected',
+  const statCards: StatCardData[] = stats
+    ? [
+        {
+          label: 'Total Reservists',
+          value: stats.totalReservists,
+          icon: 'Users',
+          color: 'info',
+        },
+        {
+          label: 'Active Reservists',
+          value: stats.activeReservists,
+          icon: 'UserCheck',
+          color: 'success',
+        },
+        {
+          label: 'Pending Documents',
+          value: stats.pendingDocuments,
+          icon: 'FileText',
+          color: 'warning',
+        },
+        {
+          label: 'Upcoming Trainings',
+          value: stats.upcomingTrainings,
+          icon: 'Calendar',
+          color: 'primary',
+        },
+        {
+          label: 'Pending Actions',
+          value: stats.pendingActions,
+          icon: 'AlertCircle',
+          color: 'danger',
+        },
+      ]
+    : [];
+
+  const getPriorityBadge = (priority: string) => {
+    const config = {
+      urgent: { variant: 'danger' as const, label: 'Urgent' },
+      high: { variant: 'warning' as const, label: 'High' },
+      normal: { variant: 'info' as const, label: 'Normal' },
+      low: { variant: 'default' as const, label: 'Low' },
     };
-
-    const entityMap: Record<string, string> = {
-      'reservist': 'reservist record',
-      'document': 'document',
-      'training': 'training session',
-      'rids': 'RIDS form',
-      'profile': 'profile',
-    };
-
-    const action = actionMap[activity.action.toUpperCase()] || activity.action.toLowerCase();
-    const entity = entityMap[activity.entityType.toLowerCase()] || activity.entityType.toLowerCase();
-
-    return `${action} a ${entity}`;
+    return config[priority as keyof typeof config] || config.normal;
   };
 
-  // Transform stats for StatCard components
-  const statCards: StatCardData[] = [
-    {
-      label: 'Total Reservists',
-      value: stats?.totalReservists?.toString() || '0',
-      change: 0,
-      changeLabel: 'in your companies',
-      icon: 'Shield',
-      trend: 'neutral',
-      color: 'primary',
-    },
-    {
-      label: 'Pending Documents',
-      value: stats?.pendingDocuments?.toString() || '0',
-      change: 0,
-      changeLabel: 'awaiting validation',
-      icon: 'FileCheck',
-      trend: 'neutral',
-      color: 'warning',
-    },
-    {
-      label: 'Upcoming Trainings',
-      value: stats?.upcomingTrainings?.toString() || '0',
-      change: 0,
-      changeLabel: 'scheduled',
-      icon: 'GraduationCap',
-      trend: 'neutral',
-      color: 'info',
-    },
-    {
-      label: 'Pending Actions',
-      value: stats?.pendingActions?.toString() || '0',
-      change: 0,
-      changeLabel: 'require attention',
-      icon: 'ClipboardList',
-      trend: 'neutral',
-      color: 'success',
-    },
-  ];
+  const getStatusBadge = (status: string) => {
+    const config = {
+      pending: { variant: 'warning' as const, label: 'Pending' },
+      verified: { variant: 'success' as const, label: 'Verified' },
+      rejected: { variant: 'danger' as const, label: 'Rejected' },
+      active: { variant: 'success' as const, label: 'Active' },
+      inactive: { variant: 'default' as const, label: 'Inactive' },
+      scheduled: { variant: 'info' as const, label: 'Scheduled' },
+      ongoing: { variant: 'primary' as const, label: 'Ongoing' },
+      completed: { variant: 'success' as const, label: 'Completed' },
+    };
+    return config[status as keyof typeof config] || { variant: 'default' as const, label: status };
+  };
 
   return (
     <div>
-      {/* Header */}
-      <div className="mb-6">
-        <PageHeader
-          title={`Welcome, ${staffData?.firstName || 'Staff Member'}!`}
-          description={staffData?.position || 'Company Manager'}
-          breadcrumbs={[{ label: 'Dashboard' }]}
-        />
-
-        {/* Assigned Companies */}
-        {staffData && staffData.assignedCompanies.length > 0 && (
-          <div className="mt-4">
-            <p className="text-sm text-gray-600 mb-2">Your Assigned Companies:</p>
-            <CompanyBadgeList
-              companyCodes={staffData.assignedCompanies}
-              size="md"
-              maxDisplay={10}
-            />
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Staff Dashboard"
+        description="Overview of your assigned company operations"
+        breadcrumbs={[{ label: 'Dashboard' }]}
+      />
 
       {/* Stats Overview */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-              <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-6">
+        {loading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-gray-200 rounded-xl h-32 animate-pulse"></div>
+            ))
+          : statCards.map((stat, index) => <StatCard key={index} data={stat} />)}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Recent Reservists */}
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="w-5 h-5 text-navy-600" />
+            <h3 className="text-lg font-bold text-navy-900">Recent Reservists</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {statCards.map((stat, index) => (
-            <StatCard key={index} data={stat} />
-          ))}
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <Card variant="elevated" padding="lg" className="mb-8">
-        <h2 className="text-xl font-bold text-navy-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a
-            href="/staff/reservists"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-navy-500 hover:shadow-md transition-all"
-          >
-            <Shield className="w-8 h-8 text-navy-600 mb-2" />
-            <h3 className="font-semibold text-navy-900 mb-1">Manage Reservists</h3>
-            <p className="text-sm text-gray-600">View and update reservist records</p>
-          </a>
-
-          <a
-            href="/staff/documents"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-navy-500 hover:shadow-md transition-all"
-          >
-            <FileCheck className="w-8 h-8 text-navy-600 mb-2" />
-            <h3 className="font-semibold text-navy-900 mb-1">Validate Documents</h3>
-            <p className="text-sm text-gray-600">Review and approve submissions</p>
-          </a>
-
-          <a
-            href="/staff/training"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-navy-500 hover:shadow-md transition-all"
-          >
-            <GraduationCap className="w-8 h-8 text-navy-600 mb-2" />
-            <h3 className="font-semibold text-navy-900 mb-1">Training Management</h3>
-            <p className="text-sm text-gray-600">Create and track company trainings</p>
-          </a>
-        </div>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card variant="elevated" padding="lg">
-        <h2 className="text-xl font-bold text-navy-900 mb-4">Recent Activity</h2>
-
-        {isLoadingActivity ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse flex items-start space-x-3 p-3">
-                <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+          ) : reservists.length > 0 ? (
+            <div className="space-y-3">
+              {reservists.map((reservist) => (
+                <div
+                  key={reservist.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-semibold text-navy-900">
+                      {reservist.lastName}, {reservist.firstName}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {reservist.rank} • {reservist.company}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge {...getStatusBadge(reservist.accountStatus)} size="sm" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No reservists found</p>
+          )}
+        </Card>
+
+        {/* Upcoming Training */}
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="w-5 h-5 text-navy-600" />
+            <h3 className="text-lg font-bold text-navy-900">Upcoming Training</h3>
           </div>
-        ) : recentActivity.length > 0 ? (
-          <div className="space-y-3">
-            {recentActivity.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-shrink-0 w-10 h-10 bg-navy-100 rounded-full flex items-center justify-center">
-                  <Activity className="w-5 h-5 text-navy-600" />
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          ) : trainings.length > 0 ? (
+            <div className="space-y-3">
+              {trainings.map((training) => (
+                <div key={training.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-semibold text-navy-900">{training.title}</p>
+                    <Badge {...getStatusBadge(training.status)} size="sm" />
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock className="w-4 h-4" />
+                    <span>{format(new Date(training.scheduledDate), 'MMM dd, yyyy')}</span>
+                  </div>
+                  {training.company && (
+                    <p className="text-sm text-gray-600 mt-1">Company: {training.company}</p>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">
-                    <span className="font-semibold">{activity.userName}</span>
-                    {' '}
-                    {formatAction(activity)}
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No upcoming training sessions</p>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Pending Documents */}
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-5 h-5 text-navy-600" />
+            <h3 className="text-lg font-bold text-navy-900">Pending Documents</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          ) : documents.length > 0 ? (
+            <div className="space-y-3">
+              {documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-semibold text-navy-900">{doc.documentType}</p>
+                    <p className="text-sm text-gray-600">{doc.reservistName}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {format(new Date(doc.createdAt), 'MMM dd, yyyy')}
+                    </p>
+                  </div>
+                  <Badge {...getStatusBadge(doc.status)} size="sm" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No pending documents</p>
+          )}
+        </Card>
+
+        {/* Company Announcements */}
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-4">
+            <Megaphone className="w-5 h-5 text-navy-600" />
+            <h3 className="text-lg font-bold text-navy-900">Company Announcements</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-20 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          ) : announcements.length > 0 ? (
+            <div className="space-y-3">
+              {announcements.map((announcement) => (
+                <div key={announcement.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-semibold text-navy-900 flex-1">{announcement.title}</p>
+                    <Badge {...getPriorityBadge(announcement.priority)} size="sm" />
+                  </div>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                    {announcement.content}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatTimestamp(activity.timestamp)}
+                  <p className="text-xs text-gray-500">
+                    {format(new Date(announcement.publishedAt), 'MMM dd, yyyy HH:mm')}
                   </p>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <Activity className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-            <p>No recent activity</p>
-            <p className="text-sm mt-1">Activity from the last 7 days will appear here</p>
-          </div>
-        )}
-      </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No announcements</p>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
