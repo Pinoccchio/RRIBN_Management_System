@@ -15,7 +15,6 @@ export const SignInForm: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false,
   });
 
   const [errors, setErrors] = useState<{
@@ -96,13 +95,13 @@ export const SignInForm: React.FC = () => {
 
       // Successfully signed in - AuthContext has already refreshed user data
       logger.success('Sign in successful - User data loaded', { email: formData.email });
-      logger.info('Navigating to home (middleware will redirect to dashboard)', { email: formData.email });
+      logger.info('Redirecting to home (middleware will redirect to dashboard)', { email: formData.email });
 
-      // Force router refresh to ensure middleware picks up new session
-      router.refresh();
-
-      // Navigate to home page - middleware will redirect to the appropriate dashboard
-      router.push('/');
+      // Use hard redirect to ensure cookies are included in the request
+      // Small delay ensures Supabase cookies are fully set before redirect
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
     } catch (error) {
       logger.error('Unexpected error during sign in', error, { email: formData.email });
       setErrors({
@@ -166,20 +165,8 @@ export const SignInForm: React.FC = () => {
           disabled={isLoading}
         />
 
-        {/* Remember Me & Forgot Password */}
-        <div className="flex items-center justify-between">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              name="rememberMe"
-              checked={formData.rememberMe}
-              onChange={handleChange}
-              className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-0 cursor-pointer"
-              disabled={isLoading}
-            />
-            <span className="ml-2 text-sm text-gray-700">Remember me</span>
-          </label>
-
+        {/* Forgot Password */}
+        <div className="flex items-center justify-end">
           <Link
             href="/forgot-password"
             className="text-sm font-medium text-yellow-600 hover:text-yellow-700 transition-colors"
