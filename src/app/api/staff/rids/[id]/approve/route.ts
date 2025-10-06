@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -22,7 +22,7 @@ export async function PUT(
       );
     }
 
-    const ridsId = params.id;
+    const { id: ridsId } = await params;
     const body = await request.json();
     const { verification_notes } = body;
 

@@ -1,19 +1,53 @@
 'use client';
 
-import { X, Download, User, FileText, Award, Users, GraduationCap, Briefcase, MapPin, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Download, User, FileText, Award, Users, GraduationCap, Briefcase, MapPin, Shield, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { RIDSFormComplete } from '@/lib/types/rids';
+import { logger } from '@/lib/logger';
 
 interface RIDSViewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  rids: RIDSFormComplete | null;
+  ridsId: string | null;
 }
 
-export function RIDSViewModal({ isOpen, onClose, rids }: RIDSViewModalProps) {
-  if (!rids) return null;
+export function RIDSViewModal({ isOpen, onClose, ridsId }: RIDSViewModalProps) {
+  const [rids, setRids] = useState<RIDSFormComplete | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && ridsId) {
+      fetchRIDS();
+    }
+  }, [isOpen, ridsId]);
+
+  const fetchRIDS = async () => {
+    if (!ridsId) return;
+
+    try {
+      setLoading(true);
+      logger.info(`📥 [RIDSViewModal] Fetching RIDS data for ID: ${ridsId}`, { context: 'VIEW_RIDS_MODAL' });
+
+      const response = await fetch(`/api/staff/rids/${ridsId}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setRids(data.data);
+        logger.success(`✅ [RIDSViewModal] RIDS data loaded successfully`, { context: 'VIEW_RIDS_MODAL' });
+      } else {
+        logger.error(`❌ [RIDSViewModal] Failed to fetch RIDS: ${data.error}`, { context: 'VIEW_RIDS_MODAL' });
+      }
+    } catch (error) {
+      logger.error('❌ [RIDSViewModal] Error fetching RIDS', error, { context: 'VIEW_RIDS_MODAL' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!ridsId) return null;
 
   const SectionHeader = ({ icon: Icon, title }: { icon: any; title: string }) => (
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -31,25 +65,36 @@ export function RIDSViewModal({ isOpen, onClose, rids }: RIDSViewModalProps) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Reservist Information Data Sheet</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {rids.reservist?.first_name} {rids.reservist?.middle_name} {rids.reservist?.last_name} - {rids.reservist?.service_number}
-          </p>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-navy-600" />
+          <span className="ml-3 text-gray-600">Loading RIDS data...</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-            <X className="w-6 h-6" />
-          </button>
+      ) : !rids ? (
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">No RIDS data available</p>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Reservist Information Data Sheet</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {rids.reservist?.first_name} {rids.reservist?.middle_name} {rids.reservist?.last_name} - {rids.reservist?.service_number}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
 
-      <div className="max-h-[70vh] overflow-y-auto space-y-8">
+          <div className="max-h-[70vh] overflow-y-auto space-y-8">
         {/* Section 1: Personnel Information (from reservist_details) */}
         <div className="bg-gray-50 p-6 rounded-lg">
           <SectionHeader icon={User} title="Section 1: Personnel Information" />
@@ -289,6 +334,8 @@ export function RIDSViewModal({ isOpen, onClose, rids }: RIDSViewModalProps) {
           </dl>
         </div>
       </div>
+        </>
+      )}
     </Modal>
   );
 }

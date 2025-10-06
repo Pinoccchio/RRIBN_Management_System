@@ -4,7 +4,7 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -13,10 +13,12 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id: ridsId } = await params;
+
     const { data, error } = await supabase
       .from('rids_military_training')
       .select('*')
-      .eq('rids_form_id', params.id)
+      .eq('rids_form_id', ridsId)
       .order('date_graduated', { ascending: false });
 
     if (error) {
@@ -32,7 +34,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -41,12 +43,13 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id: ridsId } = await params;
     const body = await request.json();
 
     const { data, error } = await supabase
       .from('rids_military_training')
       .insert({
-        rids_form_id: params.id,
+        rids_form_id: ridsId,
         training_name: body.training_name,
         school: body.school,
         date_graduated: body.date_graduated,

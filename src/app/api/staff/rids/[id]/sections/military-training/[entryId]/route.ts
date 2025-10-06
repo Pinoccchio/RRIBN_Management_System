@@ -4,7 +4,7 @@ import { logger } from '@/lib/logger';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; entryId: string } }
+  { params }: { params: Promise<{ id: string; entryId: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -13,6 +13,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id: ridsId, entryId } = await params;
     const body = await request.json();
 
     const { data, error } = await supabase
@@ -21,8 +22,8 @@ export async function PUT(
         ...body,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.entryId)
-      .eq('rids_form_id', params.id)
+      .eq('id', entryId)
+      .eq('rids_form_id', ridsId)
       .select()
       .single();
 
@@ -39,7 +40,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; entryId: string } }
+  { params }: { params: Promise<{ id: string; entryId: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -48,11 +49,13 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id: ridsId, entryId } = await params;
+
     const { error } = await supabase
       .from('rids_military_training')
       .delete()
-      .eq('id', params.entryId)
-      .eq('rids_form_id', params.id);
+      .eq('id', entryId)
+      .eq('rids_form_id', ridsId);
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });

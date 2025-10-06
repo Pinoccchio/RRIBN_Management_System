@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { ActiveDutyEntry } from '@/lib/types/rids';
 import { logger } from '@/lib/logger';
@@ -188,14 +189,22 @@ export function Section8Form({ entry, onSave, onCancel, saving }: Section8FormPr
           helperText="Auto-calculated from dates"
         />
 
-        <Input
-          label="Efficiency Rating"
-          placeholder="e.g., Excellent, Very Good, Good"
-          value={formData.efficiency_rating || ''}
-          onChange={(e) => handleChange('efficiency_rating', e.target.value)}
-          error={errors.efficiency_rating}
-          helperText="Optional performance rating"
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Efficiency Rating
+          </label>
+          <Select
+            value={formData.efficiency_rating || ''}
+            onChange={(value) => handleChange('efficiency_rating', value || '')}
+            options={[
+              { value: '', label: 'Not Rated (Optional)' },
+              { value: 'Excellent', label: 'Excellent' },
+              { value: 'Satisfactory', label: 'Satisfactory' },
+              { value: 'Unsatisfactory', label: 'Unsatisfactory' },
+            ]}
+          />
+          <p className="text-xs text-gray-500 mt-1">Optional performance rating</p>
+        </div>
 
         <Input
           label="Evaluator"

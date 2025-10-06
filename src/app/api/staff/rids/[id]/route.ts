@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -22,7 +22,7 @@ export async function GET(
       );
     }
 
-    const ridsId = params.id;
+    const { id: ridsId } = await params;
 
     logger.info('Fetching RIDS details', {
       context: 'GET /api/staff/rids/[id]',
@@ -196,7 +196,7 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -210,7 +210,7 @@ export async function PUT(
       );
     }
 
-    const ridsId = params.id;
+    const { id: ridsId } = await params;
     const body = await request.json();
 
     logger.info('Updating RIDS', {
@@ -292,7 +292,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -306,7 +306,7 @@ export async function DELETE(
       );
     }
 
-    const ridsId = params.id;
+    const { id: ridsId } = await params;
 
     logger.info('Deleting RIDS', {
       context: 'DELETE /api/staff/rids/[id]',

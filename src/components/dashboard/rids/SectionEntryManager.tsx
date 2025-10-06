@@ -25,6 +25,7 @@ interface SectionEntryManagerProps<T> {
     saving?: boolean;
   }>;
   emptyMessage?: string;
+  onToast?: (message: string, type: 'success' | 'error') => void;
 }
 
 export function SectionEntryManager<T extends { id?: string }>({
@@ -35,6 +36,7 @@ export function SectionEntryManager<T extends { id?: string }>({
   columns,
   FormComponent,
   emptyMessage = 'No entries added yet',
+  onToast,
 }: SectionEntryManagerProps<T>) {
   const [entries, setEntries] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,7 @@ export function SectionEntryManager<T extends { id?: string }>({
       }
     } catch (error) {
       logger.error(`❌ [SectionEntryManager] Failed to delete ${sectionName} entry`, error, { context: 'SECTION_MANAGER' });
-      alert('Failed to delete entry. Please try again.');
+      onToast?.('Failed to delete entry. Please try again.', 'error');
     }
   };
 

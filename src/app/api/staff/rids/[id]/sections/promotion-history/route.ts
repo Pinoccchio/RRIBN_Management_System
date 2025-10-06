@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -21,10 +21,12 @@ export async function GET(
       );
     }
 
+    const { id: ridsId } = await params;
+
     const { data, error } = await supabase
       .from('rids_promotion_history')
       .select('*')
-      .eq('rids_form_id', params.id)
+      .eq('rids_form_id', ridsId)
       .order('entry_number', { ascending: true });
 
     if (error) {
@@ -51,7 +53,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -64,6 +66,7 @@ export async function POST(
       );
     }
 
+    const { id: ridsId } = await params;
     const body = await request.json();
 
     // Validate required fields
@@ -77,7 +80,7 @@ export async function POST(
     const { data, error } = await supabase
       .from('rids_promotion_history')
       .insert({
-        rids_form_id: params.id,
+        rids_form_id: ridsId,
         entry_number: body.entry_number,
         rank: body.rank,
         date_of_rank: body.date_of_rank,

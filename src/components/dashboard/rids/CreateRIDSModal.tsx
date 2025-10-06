@@ -23,9 +23,10 @@ interface CreateRIDSModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onToast?: (message: string, type: 'success' | 'error') => void;
 }
 
-export function CreateRIDSModal({ isOpen, onClose, onSuccess }: CreateRIDSModalProps) {
+export function CreateRIDSModal({ isOpen, onClose, onSuccess, onToast }: CreateRIDSModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedReservist, setSelectedReservist] = useState<Reservist | null>(null);
   const [createdRIDSId, setCreatedRIDSId] = useState<string | null>(null);
@@ -84,13 +85,13 @@ export function CreateRIDSModal({ isOpen, onClose, onSuccess }: CreateRIDSModalP
   const handleNext = async () => {
     if (currentStep === 1) {
       if (!selectedReservist) {
-        alert('Please select a reservist');
+        onToast?.('Please select a reservist', 'error');
         return;
       }
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (!validateStep2()) {
-        alert('Please fill in all required fields');
+        onToast?.('Please fill in all required fields', 'error');
         return;
       }
       await createRIDSDraft();
@@ -168,7 +169,7 @@ export function CreateRIDSModal({ isOpen, onClose, onSuccess }: CreateRIDSModalP
       }
     } catch (error) {
       logger.error('Failed to create RIDS', error);
-      alert('Failed to create RIDS. Please try again.');
+      onToast?.('Failed to create RIDS. Please try again.', 'error');
     } finally {
       setLoading(false);
     }

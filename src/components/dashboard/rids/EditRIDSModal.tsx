@@ -24,9 +24,10 @@ interface EditRIDSModalProps {
   onClose: () => void;
   ridsId: string | null;
   onSuccess: () => void;
+  onToast?: (message: string, type: 'success' | 'error') => void;
 }
 
-export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSModalProps) {
+export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess, onToast }: EditRIDSModalProps) {
   const [rids, setRids] = useState<RIDSFormComplete | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(1);
@@ -104,7 +105,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
       }
     } catch (error) {
       logger.error('❌ [EditRIDSModal] Failed to fetch RIDS', error, { context: 'EDIT_RIDS_MODAL' });
-      alert('Failed to load RIDS. Please try again.');
+      onToast?.('Failed to load RIDS. Please try again.', 'error');
       onClose();
     } finally {
       setLoading(false);
@@ -126,7 +127,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
 
       if (response.ok) {
         logger.success(`✅ [EditRIDSModal] RIDS submitted for approval`, { context: 'EDIT_RIDS_MODAL' });
-        alert('RIDS submitted for approval successfully!');
+        onToast?.('RIDS submitted for approval successfully!', 'success');
         onSuccess();
         onClose();
       } else {
@@ -135,7 +136,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
       }
     } catch (error) {
       logger.error('❌ [EditRIDSModal] Failed to submit RIDS', error, { context: 'EDIT_RIDS_MODAL' });
-      alert('Failed to submit RIDS for approval. Please try again.');
+      onToast?.('Failed to submit RIDS for approval. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -147,7 +148,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
     // Validate required fields
     if (!section2Data.mobile_tel_nr?.trim()) {
       setSection2Errors({ mobile_tel_nr: 'Mobile number is required' });
-      alert('Please fill in all required fields');
+      onToast?.('Please fill in all required fields', 'error');
       return;
     }
 
@@ -165,14 +166,14 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
         logger.success(`✅ [EditRIDSModal] Section 2 saved`, { context: 'EDIT_RIDS_MODAL' });
         await fetchRIDS(); // Refresh data
         setEditingSection2(false);
-        alert('Section 2 updated successfully!');
+        onToast?.('Section 2 updated successfully!', 'success');
       } else {
         const data = await response.json();
         throw new Error(data.error || 'Failed to save');
       }
     } catch (error) {
       logger.error('❌ [EditRIDSModal] Failed to save Section 2', error, { context: 'EDIT_RIDS_MODAL' });
-      alert('Failed to save Section 2. Please try again.');
+      onToast?.('Failed to save Section 2. Please try again.', 'error');
     } finally {
       setSavingSection2(false);
     }
@@ -451,6 +452,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section3Form}
                 emptyMessage="No promotion/demotion history recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -473,6 +475,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section4Form}
                 emptyMessage="No military training recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -495,6 +498,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section5Form}
                 emptyMessage="No awards recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -517,6 +521,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section6Form}
                 emptyMessage="No dependents recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -539,6 +544,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section7Form}
                 emptyMessage="No educational records yet"
+                onToast={onToast}
               />
             )}
 
@@ -566,6 +572,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section8Form}
                 emptyMessage="No active duty training recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -592,6 +599,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section9Form}
                 emptyMessage="No unit assignments recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -618,6 +626,7 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
                 ]}
                 FormComponent={Section10Form}
                 emptyMessage="No designations recorded yet"
+                onToast={onToast}
               />
             )}
 
@@ -635,7 +644,15 @@ export function EditRIDSModal({ isOpen, onClose, ridsId, onSuccess }: EditRIDSMo
 
                 {canEdit ? (
                   // Edit mode - use BiometricUpload component
-                  <BiometricUpload ridsId={ridsId} />
+                  <BiometricUpload
+                    ridsId={ridsId}
+                    onToast={onToast}
+                    initialPhotos={{
+                      photo_url: rids?.photo_url,
+                      thumbmark_url: rids?.thumbmark_url,
+                      signature_url: rids?.signature_url,
+                    }}
+                  />
                 ) : (
                   // View-only mode - show current images
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

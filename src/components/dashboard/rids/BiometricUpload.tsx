@@ -16,6 +16,7 @@ interface BiometricFile {
 interface BiometricUploadProps {
   ridsId: string;
   onUploadComplete?: (fileType: string, url: string) => void;
+  onToast?: (message: string, type: 'success' | 'error') => void;
   initialPhotos?: {
     photo_url?: string | null;
     thumbmark_url?: string | null;
@@ -23,7 +24,7 @@ interface BiometricUploadProps {
   };
 }
 
-export function BiometricUpload({ ridsId, onUploadComplete, initialPhotos }: BiometricUploadProps) {
+export function BiometricUpload({ ridsId, onUploadComplete, onToast, initialPhotos }: BiometricUploadProps) {
   const [photo, setPhoto] = useState<BiometricFile>({
     file: null,
     preview: initialPhotos?.photo_url || null,
@@ -57,14 +58,14 @@ export function BiometricUpload({ ridsId, onUploadComplete, initialPhotos }: Bio
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Invalid file type. Only JPEG, PNG, and SVG images are allowed.');
+      onToast?.('Invalid file type. Only JPEG, PNG, and SVG images are allowed.', 'error');
       return;
     }
 
     // Validate file size (5MB)
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert('File size exceeds 5MB limit.');
+      onToast?.('File size exceeds 5MB limit.', 'error');
       return;
     }
 
@@ -131,7 +132,7 @@ export function BiometricUpload({ ridsId, onUploadComplete, initialPhotos }: Bio
         }
       } catch (error) {
         logger.error(`Failed to upload ${fileType}`, error);
-        alert(`Failed to upload ${fileType}. Please try again.`);
+        onToast?.(`Failed to upload ${fileType}. Please try again.`, 'error');
 
         // Reset to no preview on error
         setCurrentFile({
@@ -186,7 +187,7 @@ export function BiometricUpload({ ridsId, onUploadComplete, initialPhotos }: Bio
       }
     } catch (error) {
       logger.error(`Failed to delete ${fileType}`, error);
-      alert(`Failed to delete ${fileType}`);
+      onToast?.(`Failed to delete ${fileType}`, 'error');
     }
   };
 

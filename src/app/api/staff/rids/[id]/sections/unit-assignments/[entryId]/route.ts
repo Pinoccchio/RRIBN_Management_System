@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string; entryId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string; entryId: string }> }) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
+    const { id: ridsId, entryId } = await params;
     const body = await request.json();
     const { data, error } = await supabase
       .from('rids_unit_assignments')
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq('id', params.entryId)
-      .eq('rids_form_id', params.id)
+      .eq('id', entryId)
+      .eq('rids_form_id', ridsId)
       .select()
       .single();
 
@@ -25,17 +26,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string; entryId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string; entryId: string }> }) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
+    const { id: ridsId, entryId } = await params;
+
     const { error } = await supabase
       .from('rids_unit_assignments')
       .delete()
-      .eq('id', params.entryId)
-      .eq('rids_form_id', params.id);
+      .eq('id', entryId)
+      .eq('rids_form_id', ridsId);
 
     if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     return NextResponse.json({ success: true, message: 'Unit assignment entry deleted successfully' });

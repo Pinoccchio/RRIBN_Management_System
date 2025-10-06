@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -21,6 +21,8 @@ export async function POST(
         { status: 401 }
       );
     }
+
+    const { id: ridsId } = await params;
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -63,7 +65,7 @@ export async function POST(
     const { data: rids, error: ridsError } = await supabase
       .from('rids_forms')
       .select('reservist_id')
-      .eq('id', params.id)
+      .eq('id', ridsId)
       .single();
 
     if (ridsError) {
@@ -78,7 +80,7 @@ export async function POST(
     const fileName = `${rids.reservist_id}/${fileType}-${Date.now()}.${fileExt}`;
 
     logger.info('Uploading biometric file', {
-      rids_id: params.id,
+      rids_id: ridsId,
       file_type: fileType,
       file_name: fileName,
     });
@@ -112,7 +114,7 @@ export async function POST(
         [updateField]: publicUrl,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', ridsId)
       .select()
       .single();
 
@@ -125,7 +127,7 @@ export async function POST(
     }
 
     logger.success('Biometric file uploaded successfully', {
-      rids_id: params.id,
+      rids_id: ridsId,
       file_type: fileType,
       url: publicUrl,
     });
@@ -154,7 +156,7 @@ export async function POST(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -166,6 +168,8 @@ export async function DELETE(
         { status: 401 }
       );
     }
+
+    const { id: ridsId } = await params;
 
     const { searchParams } = new URL(request.url);
     const fileType = searchParams.get('file_type');
@@ -182,7 +186,7 @@ export async function DELETE(
     const { data: rids, error: ridsError } = await supabase
       .from('rids_forms')
       .select(`${urlField}, reservist_id`)
-      .eq('id', params.id)
+      .eq('id', ridsId)
       .single();
 
     if (ridsError) {
@@ -224,7 +228,7 @@ export async function DELETE(
         [urlField]: null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id);
+      .eq('id', ridsId);
 
     if (updateError) {
       return NextResponse.json(
@@ -234,7 +238,7 @@ export async function DELETE(
     }
 
     logger.success('Biometric file deleted successfully', {
-      rids_id: params.id,
+      rids_id: ridsId,
       file_type: fileType,
     });
 

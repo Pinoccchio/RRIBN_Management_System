@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/dashboard/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
+import { Toast } from '@/components/ui/Toast';
 import { RIDSFilters } from '@/components/dashboard/rids/RIDSFilters';
 import { RIDSTable } from '@/components/dashboard/rids/RIDSTable';
 import { RIDSViewModal } from '@/components/dashboard/rids/RIDSViewModal';
 import { CreateRIDSModal } from '@/components/dashboard/rids/CreateRIDSModal';
 import { EditRIDSModal } from '@/components/dashboard/rids/EditRIDSModal';
+import { DeleteRIDSModal } from '@/components/dashboard/rids/DeleteRIDSModal';
 import { Plus, AlertCircle } from 'lucide-react';
 import { RIDSFormComplete } from '@/lib/types/rids';
 import { logger } from '@/lib/logger';
@@ -20,9 +22,15 @@ export default function StaffRIDSPage() {
   // Modal states
   const [selectedRIDS, setSelectedRIDS] = useState<RIDSFormComplete | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingRIDSId, setViewingRIDSId] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRIDSId, setEditingRIDSId] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingRIDS, setDeletingRIDS] = useState(false);
+
+  // Toast
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +112,7 @@ export default function StaffRIDSPage() {
   };
 
   const handleView = (ridsItem: RIDSFormComplete) => {
-    setSelectedRIDS(ridsItem);
+    setViewingRIDSId(ridsItem.id);
     setViewModalOpen(true);
   };
 
@@ -113,25 +121,42 @@ export default function StaffRIDSPage() {
     setEditModalOpen(true);
   };
 
-  const handleDelete = async (ridsItem: RIDSFormComplete) => {
-    if (!confirm(`Are you sure you want to delete RIDS for ${ridsItem.reservist?.first_name} ${ridsItem.reservist?.last_name}?`)) {
-      return;
-    }
+  const handleDelete = (ridsItem: RIDSFormComplete) => {
+    setSelectedRIDS(ridsItem);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedRIDS) return;
+
+    setDeletingRIDS(true);
 
     try {
-      const response = await fetch(`/api/staff/rids/${ridsItem.id}`, {
+      const response = await fetch(`/api/staff/rids/${selectedRIDS.id}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        fetchRIDS(); // Refresh list
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to delete RIDS');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to delete RIDS');
       }
+
+      setToast({
+        message: 'RIDS deleted successfully',
+        type: 'success',
+      });
+      setDeleteModalOpen(false);
+      setSelectedRIDS(null);
+      fetchRIDS();
     } catch (error) {
       logger.error('Failed to delete RIDS', error);
-      alert('Failed to delete RIDS');
+      setToast({
+        message: error instanceof Error ? error.message : 'Failed to delete RIDS',
+        type: 'error',
+      });
+    } finally {
+      setDeletingRIDS(false);
     }
   };
 
@@ -147,14 +172,23 @@ export default function StaffRIDSPage() {
 
       if (response.ok) {
         fetchRIDS(); // Refresh list
-        alert('RIDS submitted successfully');
+        setToast({
+          message: 'RIDS submitted successfully',
+          type: 'success',
+        });
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to submit RIDS');
+        setToast({
+          message: data.error || 'Failed to submit RIDS',
+          type: 'error',
+        });
       }
     } catch (error) {
       logger.error('Failed to submit RIDS', error);
-      alert('Failed to submit RIDS');
+      setToast({
+        message: 'Failed to submit RIDS',
+        type: 'error',
+      });
     }
   };
 
@@ -170,14 +204,23 @@ export default function StaffRIDSPage() {
 
       if (response.ok) {
         fetchRIDS(); // Refresh list
-        alert('RIDS approved successfully');
+        setToast({
+          message: 'RIDS approved successfully',
+          type: 'success',
+        });
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to approve RIDS');
+        setToast({
+          message: data.error || 'Failed to approve RIDS',
+          type: 'error',
+        });
       }
     } catch (error) {
       logger.error('Failed to approve RIDS', error);
-      alert('Failed to approve RIDS');
+      setToast({
+        message: 'Failed to approve RIDS',
+        type: 'error',
+      });
     }
   };
 
@@ -195,14 +238,23 @@ export default function StaffRIDSPage() {
 
       if (response.ok) {
         fetchRIDS(); // Refresh list
-        alert('RIDS rejected');
+        setToast({
+          message: 'RIDS rejected',
+          type: 'success',
+        });
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to reject RIDS');
+        setToast({
+          message: data.error || 'Failed to reject RIDS',
+          type: 'error',
+        });
       }
     } catch (error) {
       logger.error('Failed to reject RIDS', error);
-      alert('Failed to reject RIDS');
+      setToast({
+        message: 'Failed to reject RIDS',
+        type: 'error',
+      });
     }
   };
 
@@ -287,9 +339,9 @@ export default function StaffRIDSPage() {
         isOpen={viewModalOpen}
         onClose={() => {
           setViewModalOpen(false);
-          setSelectedRIDS(null);
+          setViewingRIDSId(null);
         }}
-        rids={selectedRIDS}
+        ridsId={viewingRIDSId}
       />
 
       {/* Create Modal */}
@@ -299,7 +351,12 @@ export default function StaffRIDSPage() {
         onSuccess={() => {
           fetchRIDS(); // Refresh list
           setCreateModalOpen(false);
+          setToast({
+            message: 'RIDS created successfully!',
+            type: 'success',
+          });
         }}
+        onToast={(message, type) => setToast({ message, type })}
       />
 
       {/* Edit Modal */}
@@ -313,7 +370,29 @@ export default function StaffRIDSPage() {
         onSuccess={() => {
           fetchRIDS(); // Refresh list
         }}
+        onToast={(message, type) => setToast({ message, type })}
       />
+
+      {/* Delete Modal */}
+      <DeleteRIDSModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setSelectedRIDS(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        rids={selectedRIDS}
+        loading={deletingRIDS}
+      />
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }
