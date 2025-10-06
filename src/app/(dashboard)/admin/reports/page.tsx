@@ -1,33 +1,61 @@
-import React from 'react';
 import { PageHeader } from '@/components/dashboard/shared/PageHeader';
+import { ReportCard } from '@/components/dashboard/reports/ReportCard';
+import { Users, GraduationCap, FileText } from 'lucide-react';
 
-export default function ReportsPage() {
+export default function AdminReportsPage() {
   return (
     <div>
       <PageHeader
         title="Reports"
-        description="Battalion-wide reports and analytics"
-        breadcrumbs={[
-          { label: 'Dashboard', href: '/admin' },
-          { label: 'Reports' },
-        ]}
+        description="Generate and export battalion-wide reports across all companies"
+        breadcrumbs={[{ label: 'Dashboard', href: '/admin' }, { label: 'Reports' }]}
       />
 
-      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Battalion Reports</h3>
-          <p className="text-gray-600 mb-6">
-            Generate and view comprehensive battalion reports including personnel status, training compliance, document validation, and operational readiness across all companies.
-          </p>
-          <div className="text-sm text-gray-500">
-            Coming soon: Battalion reports
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Company Roster Report */}
+        <ReportCard
+          title="Company Roster"
+          description="View and export complete personnel roster for all companies battalion-wide"
+          icon={Users}
+          href="/admin/reports/roster"
+          iconColor="text-blue-600"
+          iconBgColor="bg-blue-100"
+        />
+
+        {/* Training Summary Report */}
+        <ReportCard
+          title="Training Summary"
+          description="Track all training sessions, attendance, and completion rates across the battalion"
+          icon={GraduationCap}
+          href="/admin/reports/training"
+          iconColor="text-green-600"
+          iconBgColor="bg-green-100"
+        />
+
+        {/* Pending Documents Report */}
+        <ReportCard
+          title="Pending Documents"
+          description="Monitor all document submissions awaiting validation across all companies"
+          icon={FileText}
+          href="/admin/reports/documents"
+          iconColor="text-orange-600"
+          iconBgColor="bg-orange-100"
+        />
+      </div>
+
+      {/* Info Section */}
+      <div className="mt-8 p-6 bg-navy-50 border border-navy-200 rounded-xl">
+        <h3 className="text-lg font-bold text-navy-900 mb-2">About Battalion Reports</h3>
+        <p className="text-sm text-gray-700 mb-3">
+          All reports display battalion-wide data across all companies. You can view the data in the browser and export to PDF for offline use, presentations, or official record-keeping.
+        </p>
+        <ul className="text-sm text-gray-700 space-y-1 ml-5 list-disc">
+          <li>Click on any report card to view the full battalion-wide data</li>
+          <li>Use the "Export to PDF" button to download a formatted report</li>
+          <li>Use the "Print" button for direct printing</li>
+          <li>All reports include battalion designation and generation timestamp</li>
+          <li>Reports can be filtered by company if needed</li>
+        </ul>
       </div>
     </div>
   );
