@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import {
   FileText,
@@ -24,8 +23,6 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   onMarkAsRead,
   onClose,
 }) => {
-  const router = useRouter();
-
   const getIcon = () => {
     switch (notification.type) {
       case 'document':
@@ -49,11 +46,8 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       onMarkAsRead(notification.id);
     }
 
-    // Navigate to action URL if exists
-    if (notification.action_url) {
-      router.push(notification.action_url);
-      onClose?.();
-    }
+    // Close the dropdown
+    onClose?.();
   };
 
   return (
