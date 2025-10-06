@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         { count: 'exact', head: true }
       )
       .eq('status', 'pending')
-      .in('accounts.reservist_details.company', assignedCompanies);
+      .in('reservist_details.company', assignedCompanies);
 
     // 6. Get upcoming training sessions
     const { count: upcomingTrainings } = await supabase

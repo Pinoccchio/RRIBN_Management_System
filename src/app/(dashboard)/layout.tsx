@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { Toaster } from 'react-hot-toast';
 import { DashboardSidebar } from '@/components/dashboard/layout/DashboardSidebar';
 import { DashboardHeader } from '@/components/dashboard/layout/DashboardHeader';
 import { getNavigationByRole } from '@/lib/constants/navigation';
@@ -158,6 +159,9 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Toast Notifications */}
+      <Toaster position="top-right" />
+
       {/* Sidebar */}
       <DashboardSidebar
         navigationItems={navigationItems}

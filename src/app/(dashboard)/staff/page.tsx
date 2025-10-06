@@ -257,7 +257,9 @@ export default function StaffDashboardPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <Badge {...getStatusBadge(reservist.accountStatus)} size="sm" />
+                    <Badge variant={getStatusBadge(reservist.accountStatus).variant} size="sm">
+                      {getStatusBadge(reservist.accountStatus).label}
+                    </Badge>
                   </div>
                 </div>
               ))}
@@ -285,7 +287,9 @@ export default function StaffDashboardPage() {
                 <div key={training.id} className="p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <p className="font-semibold text-navy-900">{training.title}</p>
-                    <Badge {...getStatusBadge(training.status)} size="sm" />
+                    <Badge variant={getStatusBadge(training.status).variant} size="sm">
+                      {getStatusBadge(training.status).label}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock className="w-4 h-4" />
@@ -327,7 +331,9 @@ export default function StaffDashboardPage() {
                       {format(new Date(doc.createdAt), 'MMM dd, yyyy')}
                     </p>
                   </div>
-                  <Badge {...getStatusBadge(doc.status)} size="sm" />
+                  <Badge variant={getStatusBadge(doc.status).variant} size="sm">
+                    {getStatusBadge(doc.status).label}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -354,7 +360,9 @@ export default function StaffDashboardPage() {
                 <div key={announcement.id} className="p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <p className="font-semibold text-navy-900 flex-1">{announcement.title}</p>
-                    <Badge {...getPriorityBadge(announcement.priority)} size="sm" />
+                    <Badge variant={getPriorityBadge(announcement.priority).variant} size="sm">
+                      {getPriorityBadge(announcement.priority).label}
+                    </Badge>
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-2 mb-2">
                     {announcement.content}

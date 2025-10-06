@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell, User, LogOut, Settings, ChevronDown, Menu, X } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { DashboardUser } from '@/lib/types/dashboard';
 import { logger } from '@/lib/logger';
+import { NotificationDropdown } from '@/components/dashboard/notifications/NotificationDropdown';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface DashboardHeaderProps {
   user?: DashboardUser;
@@ -19,8 +22,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   isCollapsed = false,
   onToggleSidebar
 }) => {
+  const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [notificationCount] = useState(3); // Mock notification count
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   // Close dropdown when user changes (e.g., on sign out)
   useEffect(() => {
@@ -110,14 +115,24 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         {/* Right Section */}
         <div className="flex items-center gap-4 ml-6">
           {/* Notifications */}
-          <button className="relative p-2 text-gray-600 hover:text-navy-900 hover:bg-gray-100 rounded-lg transition-colors">
-            <Bell className="w-5 h-5" />
-            {notificationCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {notificationCount}
-              </span>
-            )}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              className="relative p-2 text-gray-600 hover:text-navy-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            <NotificationDropdown
+              isOpen={isNotificationOpen}
+              onClose={() => setIsNotificationOpen(false)}
+            />
+          </div>
 
           {/* User Profile Dropdown */}
           <div className="relative">
@@ -170,17 +185,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   <div className="py-2">
                     <button
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        router.push(`/${currentUser.role}/profile`);
+                      }}
                     >
                       <User className="w-4 h-4" />
                       <span>My Profile</span>
-                    </button>
-                    <button
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Account Settings</span>
                     </button>
                   </div>
 
