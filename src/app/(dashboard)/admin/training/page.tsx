@@ -108,7 +108,7 @@ export default function AdminTrainingPage() {
   const fetchAllCompanies = async () => {
     try {
       logger.info('Fetching all companies for admin...', { context: 'AdminTrainingPage' });
-      const response = await fetch('/api/admin/companies?status=active');
+      const response = await fetch('/api/admin/companies?active=true');
       const result = await response.json();
 
       if (result.success) {
