@@ -23,8 +23,6 @@ export async function PUT(
     }
 
     const { id: ridsId } = await params;
-    const body = await request.json();
-    const { verification_notes } = body;
 
     logger.info('Approving RIDS', {
       context: 'PUT /api/staff/rids/[id]/approve',
@@ -77,6 +75,27 @@ export async function PUT(
         { success: false, error: error.message },
         { status: 500 }
       );
+    }
+
+    // Insert history record
+    const { error: historyError } = await supabase
+      .from('rids_status_history')
+      .insert({
+        rids_form_id: ridsId,
+        from_status: currentRIDS.status,
+        to_status: 'approved',
+        reason: 'RIDS approved by staff',
+        notes: null,
+        changed_by: user.id,
+        action_type: 'approve',
+        metadata: {},
+      });
+
+    if (historyError) {
+      logger.error('Failed to insert RIDS status history', historyError, {
+        context: 'PUT /api/staff/rids/[id]/approve',
+      });
+      // Don't fail the request if history insert fails - log and continue
     }
 
     // Create notification for reservist (optional - implement later)

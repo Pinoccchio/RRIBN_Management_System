@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, Edit, Trash2, Send, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, Edit, Trash2, Send, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/Button';
 import { RIDSFormComplete } from '@/lib/types/rids';
@@ -14,6 +14,7 @@ interface RIDSTableProps {
   onSubmit?: (rids: RIDSFormComplete) => void;
   onApprove?: (rids: RIDSFormComplete) => void;
   onReject?: (rids: RIDSFormComplete) => void;
+  onChangeStatus?: (rids: RIDSFormComplete) => void;
 }
 
 export function RIDSTable({
@@ -25,6 +26,7 @@ export function RIDSTable({
   onSubmit,
   onApprove,
   onReject,
+  onChangeStatus,
 }: RIDSTableProps) {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -128,6 +130,19 @@ export function RIDSTable({
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
+
+                    {/* Change Status - Available for all RIDS */}
+                    {onChangeStatus && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onChangeStatus(item)}
+                        className="text-yellow-600 hover:text-yellow-700"
+                        title="Change RIDS status"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    )}
 
                     {(item.status === 'draft' || item.status === 'rejected') && (
                       <>

@@ -5,10 +5,11 @@ import { logger } from '@/lib/logger';
 /**
  * GET /api/staff/rids
  * List RIDS forms with filters
+ * COMPANY-FILTERED: Only shows RIDS from reservists in assigned companies
  *
  * Query params:
  * - status: filter by status (draft, submitted, approved, rejected, all)
- * - company: filter by company code
+ * - company: filter by company code (must be in assigned companies)
  * - search: search by reservist name or service number
  * - page: page number (default: 1)
  * - limit: items per page (default: 10)
@@ -26,6 +27,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get staff's assigned companies
+    const { data: staffDetails, error: staffError } = await supabase
+      .from('staff_details')
+      .select('assigned_companies')
+      .eq('id', user.id)
+      .single();
+
+    if (staffError || !staffDetails) {
+      logger.error('Failed to fetch staff details', staffError, { userId: user.id });
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch staff details' },
+        { status: 500 }
+      );
+    }
+
+    const assignedCompanies = staffDetails.assigned_companies || [];
+
+    if (assignedCompanies.length === 0) {
+      logger.info('No assigned companies - Returning empty list', { userId: user.id });
+      return NextResponse.json({
+        success: true,
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+      });
+    }
+
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || 'all';
@@ -35,10 +62,24 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
+    // Validate company filter if provided - must be in assigned companies
+    if (company && !assignedCompanies.includes(company)) {
+      logger.warn('Staff attempted to filter by unassigned company', {
+        userId: user.id,
+        attemptedCompany: company,
+        assignedCompanies,
+      });
+      return NextResponse.json(
+        { success: false, error: 'You can only view RIDS from companies you are assigned to' },
+        { status: 403 }
+      );
+    }
+
     logger.info('Fetching RIDS list', {
       context: 'GET /api/staff/rids',
       user_id: user.id,
       filters: { status, company, search, page, limit },
+      assignedCompanies,
     });
 
     // Build query
@@ -70,7 +111,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    // Apply company filter
+    // Apply company filter (already validated to be in assigned companies)
     if (company) {
       query = query.eq('reservist.reservist_details.company', company);
     }
@@ -101,8 +142,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Filter RIDS by assigned companies (application-level security)
+    // Only show RIDS from reservists in staff's assigned companies
+    const filteredData = (data || []).filter((rids: any) => {
+      const reservistCompany = rids.reservist?.reservist_details?.company;
+      return reservistCompany && assignedCompanies.includes(reservistCompany);
+    });
+
+    logger.info(`Filtered RIDS: ${data?.length || 0} total → ${filteredData.length} for staff's companies`, {
+      userId: user.id,
+      assignedCompanies,
+    });
+
     // Transform data to match expected format
-    const transformedData = (data || []).map((rids: any) => ({
+    const transformedData = filteredData.map((rids: any) => ({
       id: rids.id,
       reservist_id: rids.reservist_id,
       version: rids.version,
@@ -164,7 +217,7 @@ export async function GET(request: NextRequest) {
     logger.success('RIDS list fetched successfully', {
       context: 'GET /api/staff/rids',
       count: transformedData.length,
-      total: count,
+      total: filteredData.length,
     });
 
     return NextResponse.json({
@@ -173,8 +226,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
+        total: filteredData.length,
+        totalPages: Math.ceil(filteredData.length / limit),
       },
     });
   } catch (error) {

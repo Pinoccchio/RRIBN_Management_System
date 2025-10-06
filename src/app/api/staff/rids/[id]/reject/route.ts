@@ -88,6 +88,27 @@ export async function PUT(
       );
     }
 
+    // Insert history record
+    const { error: historyError } = await supabase
+      .from('rids_status_history')
+      .insert({
+        rids_form_id: ridsId,
+        from_status: currentRIDS.status,
+        to_status: 'rejected',
+        reason: rejection_reason.trim(),
+        notes: null,
+        changed_by: user.id,
+        action_type: 'reject',
+        metadata: {},
+      });
+
+    if (historyError) {
+      logger.error('Failed to insert RIDS status history', historyError, {
+        context: 'PUT /api/staff/rids/[id]/reject',
+      });
+      // Don't fail the request if history insert fails - log and continue
+    }
+
     // Create notification for staff/reservist (optional - implement later)
     // await createNotification({
     //   user_id: currentRIDS.reservist_id,

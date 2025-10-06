@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Verify user is staff
+    // Verify user is staff and get assigned companies
     const { data: account } = await supabase
       .from('accounts')
       .select('role')
@@ -45,6 +45,20 @@ export async function GET(request: NextRequest) {
       });
       return NextResponse.json({ success: false, error: 'Forbidden - Staff only' }, { status: 403 });
     }
+
+    // Get staff's assigned companies
+    const { data: staffDetails, error: staffError } = await supabase
+      .from('staff_details')
+      .select('assigned_companies')
+      .eq('id', user.id)
+      .single();
+
+    if (staffError || !staffDetails) {
+      logger.error('Failed to fetch staff details', staffError, { userId: user.id });
+      return NextResponse.json({ success: false, error: 'Failed to fetch staff details' }, { status: 500 });
+    }
+
+    const assignedCompanies = staffDetails.assigned_companies || [];
 
     // Get query params
     const searchParams = request.nextUrl.searchParams;
@@ -92,8 +106,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to fetch announcements' }, { status: 500 });
     }
 
+    // Filter announcements based on staff's assigned companies
+    // Staff can only see announcements where:
+    // 1. target_companies is NULL (targets all companies), OR
+    // 2. target_companies array contains at least one of their assigned companies
+    const filteredAnnouncements = announcements.filter((announcement: any) => {
+      // If target_companies is null or empty, announcement targets all companies
+      if (!announcement.target_companies || announcement.target_companies.length === 0) {
+        return true;
+      }
+
+      // Check if any of the announcement's target companies match staff's assigned companies
+      return announcement.target_companies.some((targetCompany: string) =>
+        assignedCompanies.includes(targetCompany)
+      );
+    });
+
+    logger.info(`Filtered announcements: ${announcements.length} total → ${filteredAnnouncements.length} for staff's companies`, {
+      userId: user.id,
+      assignedCompanies,
+    });
+
     // Transform data to match AnnouncementWithCreator interface
-    const transformedAnnouncements = announcements.map((announcement: any) => ({
+    const transformedAnnouncements = filteredAnnouncements.map((announcement: any) => ({
       ...announcement,
       creator: {
         first_name: announcement.creator?.profile?.first_name || 'Unknown',
@@ -102,7 +137,7 @@ export async function GET(request: NextRequest) {
       },
     }));
 
-    logger.success(`Fetched ${transformedAnnouncements.length} announcements`, { userId: user.id });
+    logger.success(`Fetched ${transformedAnnouncements.length} announcements for staff's assigned companies`, { userId: user.id });
 
     return NextResponse.json({
       success: true,
