@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { logger } from '@/lib/logger';
 
 interface Reservist {
@@ -30,6 +31,8 @@ export function ReservistSelect({ onSelect, selectedReservistId }: ReservistSele
   const [filteredReservists, setFilteredReservists] = useState<Reservist[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [selectedReservist, setSelectedReservist] = useState<Reservist | null>(null);
 
   useEffect(() => {
@@ -43,33 +46,78 @@ export function ReservistSelect({ onSelect, selectedReservistId }: ReservistSele
   const fetchReservists = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/staff/reservists/simple?status=active');
+      logger.info('🔄 [ReservistSelect] Fetching reservists...', { context: 'RESERVIST_SELECT' });
+
+      const apiUrl = '/api/staff/reservists/simple?status=active';
+      logger.debug(`   📡 Fetch URL: ${apiUrl}`, { context: 'RESERVIST_SELECT' });
+      logger.debug('   🔒 Cache: no-store, Cache-Control: no-cache', { context: 'RESERVIST_SELECT' });
+
+      // Force fresh data - no caching to ensure RIDS status is up-to-date
+      const response = await fetch(apiUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+
+      logger.debug(`   📥 Response status: ${response.status} ${response.statusText}`, { context: 'RESERVIST_SELECT' });
 
       if (!response.ok) {
         throw new Error('Failed to fetch reservists');
       }
 
       const data = await response.json();
+      logger.debug('   📦 Raw API response received', { context: 'RESERVIST_SELECT' });
+      logger.debug(`   ✓ Success: ${data.success}, Data length: ${data.data?.length || 0}`, { context: 'RESERVIST_SELECT' });
 
       if (data.success) {
-        setReservists(data.data || []);
-        setFilteredReservists(data.data || []);
+        const reservistList = data.data || [];
+
+        logger.success(`✅ [ReservistSelect] Received ${reservistList.length} reservists`, { context: 'RESERVIST_SELECT' });
+
+        // Log each reservist's RIDS status
+        if (reservistList.length > 0) {
+          logger.debug('🔍 [ReservistSelect] RIDS Status by Reservist:', { context: 'RESERVIST_SELECT' });
+          reservistList.forEach((r: Reservist, index: number) => {
+            const statusIcon = r.has_rids ? '✅ HAS RIDS' : '❌ NO RIDS';
+            logger.debug(`   ${index + 1}. ${r.first_name} ${r.last_name} (${r.service_number}): ${statusIcon}`, { context: 'RESERVIST_SELECT' });
+            if (r.has_rids) {
+              logger.debug(`      └─ RIDS ID: ${r.rids_id}, Status: ${r.rids_status}`, { context: 'RESERVIST_SELECT' });
+            }
+          });
+        }
+
+        setReservists(reservistList);
+        setFilteredReservists(reservistList);
+        setLastRefreshed(new Date());
+
+        logger.success(`✅ [ReservistSelect] State updated with ${reservistList.length} reservists`, { context: 'RESERVIST_SELECT' });
       }
     } catch (error) {
-      logger.error('Failed to fetch reservists', error);
+      logger.error('❌ [ReservistSelect] Failed to fetch reservists', error, { context: 'RESERVIST_SELECT' });
       setReservists([]);
     } finally {
       setLoading(false);
+      logger.debug('   🏁 Loading state set to false', { context: 'RESERVIST_SELECT' });
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchReservists();
+    setRefreshing(false);
   };
 
   const filterReservists = () => {
     if (!searchQuery.trim()) {
+      logger.debug(`🔍 [ReservistSelect] No search query - showing all ${reservists.length} reservists`, { context: 'RESERVIST_SELECT' });
       setFilteredReservists(reservists);
       return;
     }
 
     const query = searchQuery.toLowerCase();
+    logger.debug(`🔍 [ReservistSelect] Filtering with query: "${query}"`, { context: 'RESERVIST_SELECT' });
+
     const filtered = reservists.filter((r) => {
       const fullName = `${r.first_name} ${r.middle_name || ''} ${r.last_name}`.toLowerCase();
       const serviceNumber = r.service_number?.toLowerCase() || '';
@@ -84,15 +132,21 @@ export function ReservistSelect({ onSelect, selectedReservistId }: ReservistSele
       );
     });
 
+    logger.debug(`   ✓ Filtered to ${filtered.length} reservists`, { context: 'RESERVIST_SELECT' });
     setFilteredReservists(filtered);
   };
 
   const handleSelect = (reservist: Reservist) => {
+    logger.info(`👤 [ReservistSelect] Selection attempted: ${reservist.first_name} ${reservist.last_name}`, { context: 'RESERVIST_SELECT' });
+    logger.debug(`   RIDS Status: has_rids=${reservist.has_rids}, rids_id=${reservist.rids_id || 'null'}, rids_status=${reservist.rids_status || 'null'}`, { context: 'RESERVIST_SELECT' });
+
     if (reservist.has_rids) {
+      logger.warn(`⚠️ [ReservistSelect] BLOCKED: Reservist already has RIDS!`, { context: 'RESERVIST_SELECT' });
       alert(`${reservist.first_name} ${reservist.last_name} already has a RIDS (Status: ${reservist.rids_status}). Please select a different reservist.`);
       return;
     }
 
+    logger.success(`✅ [ReservistSelect] Selection allowed - Reservist has no RIDS`, { context: 'RESERVIST_SELECT' });
     setSelectedReservist(reservist);
     onSelect(reservist);
   };
@@ -110,14 +164,34 @@ export function ReservistSelect({ onSelect, selectedReservistId }: ReservistSele
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <Input
-        type="text"
-        placeholder="Search by name, service number, rank, or company..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        leftIcon={<Search className="w-4 h-4" />}
-      />
+      {/* Search and Refresh */}
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <Input
+            type="text"
+            placeholder="Search by name, service number, rank, or company..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<Search className="w-4 h-4" />}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Last Refreshed */}
+      {lastRefreshed && (
+        <p className="text-xs text-gray-500">
+          Last updated: {lastRefreshed.toLocaleTimeString()}
+        </p>
+      )}
 
       {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
