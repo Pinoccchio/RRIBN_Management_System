@@ -1,23 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/shared/PageHeader';
 import { Button } from '@/components/ui/Button';
 import { RIDSFilters } from '@/components/dashboard/rids/RIDSFilters';
 import { RIDSTable } from '@/components/dashboard/rids/RIDSTable';
 import { RIDSViewModal } from '@/components/dashboard/rids/RIDSViewModal';
+import { CreateRIDSModal } from '@/components/dashboard/rids/CreateRIDSModal';
+import { EditRIDSModal } from '@/components/dashboard/rids/EditRIDSModal';
 import { Plus, AlertCircle } from 'lucide-react';
 import { RIDSFormComplete } from '@/lib/types/rids';
 import { logger } from '@/lib/logger';
 
 export default function StaffRIDSPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [rids, setRids] = useState<RIDSFormComplete[]>([]);
   const [assignedCompanies, setAssignedCompanies] = useState<Array<{ code: string; name: string }>>([]);
+
+  // Modal states
   const [selectedRIDS, setSelectedRIDS] = useState<RIDSFormComplete | null>(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingRIDSId, setEditingRIDSId] = useState<string | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +109,8 @@ export default function StaffRIDSPage() {
   };
 
   const handleEdit = (ridsItem: RIDSFormComplete) => {
-    router.push(`/staff/rids/${ridsItem.id}/edit`);
+    setEditingRIDSId(ridsItem.id);
+    setEditModalOpen(true);
   };
 
   const handleDelete = async (ridsItem: RIDSFormComplete) => {
@@ -207,7 +213,7 @@ export default function StaffRIDSPage() {
         title="RIDS Management"
         description="Reservist Information Data Sheet"
         action={
-          <Button onClick={() => router.push('/staff/rids/create')}>
+          <Button onClick={() => setCreateModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create New RIDS
           </Button>
@@ -284,6 +290,29 @@ export default function StaffRIDSPage() {
           setSelectedRIDS(null);
         }}
         rids={selectedRIDS}
+      />
+
+      {/* Create Modal */}
+      <CreateRIDSModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          fetchRIDS(); // Refresh list
+          setCreateModalOpen(false);
+        }}
+      />
+
+      {/* Edit Modal */}
+      <EditRIDSModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditingRIDSId(null);
+        }}
+        ridsId={editingRIDSId}
+        onSuccess={() => {
+          fetchRIDS(); // Refresh list
+        }}
       />
     </div>
   );
