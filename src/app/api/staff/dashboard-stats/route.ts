@@ -70,20 +70,20 @@ export async function GET(request: NextRequest) {
       .in('reservist_details.company', assignedCompanies);
 
     // 5. Get pending documents count
+    // First, get reservist IDs from assigned companies
+    const { data: reservistIds } = await supabase
+      .from('reservist_details')
+      .select('id')
+      .in('company', assignedCompanies);
+
+    const reservistIdList = (reservistIds || []).map((r) => r.id);
+
+    // Then count documents for those reservists
     const { count: pendingDocuments } = await supabase
       .from('documents')
-      .select(
-        `
-        *,
-        accounts!inner(
-          id,
-          reservist_details!inner(company)
-        )
-      `,
-        { count: 'exact', head: true }
-      )
+      .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
-      .in('reservist_details.company', assignedCompanies);
+      .in('reservist_id', reservistIdList);
 
     // 6. Get upcoming training sessions
     const { count: upcomingTrainings } = await supabase
