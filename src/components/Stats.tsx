@@ -3,20 +3,20 @@ import React from 'react';
 export const Stats: React.FC = () => {
   const stats = [
     {
-      value: '130K+',
+      value: '4,000+',
       label: 'ACTIVE PERSONNEL',
+    },
+    {
+      value: '14,000+',
+      label: 'OVERALL PERSONNEL',
     },
     {
       value: '45+',
       label: 'YEARS OF SERVICE',
     },
     {
-      value: '24/7',
-      label: 'OPERATIONAL SUPPORT',
-    },
-    {
       value: '100%',
-      label: 'COMMITMENT',
+      label: 'COMMITMENT TO EXCELLENCE',
     },
   ];
 

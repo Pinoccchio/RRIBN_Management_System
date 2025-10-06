@@ -29,22 +29,10 @@ export const SUPER_ADMIN_NAV: NavigationItem[] = [
     description: 'Manage administrator accounts',
   },
   {
-    label: 'Analytics',
-    href: '/super-admin/analytics',
-    icon: 'TrendingUp',
-    description: 'System analytics & monitoring',
-  },
-  {
     label: 'Audit Logs',
     href: '/super-admin/audit-logs',
     icon: 'FileSearch',
     description: 'Security & activity logs',
-  },
-  {
-    label: 'Settings',
-    href: '/super-admin/settings',
-    icon: 'Settings',
-    description: 'System configuration',
   },
   {
     label: 'Oversight',
