@@ -131,6 +131,16 @@ export interface ReservistViewData {
   source_of_commission: string | null;
   initial_rank: string | null;
   date_of_commission: string | null;
+  // Additional fields from view
+  commission_authority: string | null;
+  mobilization_center: string | null;
+  designation: string | null;
+  squad_team_section: string | null;
+  platoon: string | null;
+  battalion_brigade: string | null;
+  combat_shoes_size: string | null;
+  cap_size: string | null;
+  bda_size: string | null;
   // Approver fields
   approver_first_name: string | null;
   approver_last_name: string | null;

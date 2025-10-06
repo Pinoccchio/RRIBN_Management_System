@@ -1070,25 +1070,26 @@ const formatValidation = {
 
 ### **Reservist Features**
 
-1. **View My RIDS**
+1. **View My RIDS** (READ-ONLY)
    - View current RIDS status
    - Download PDF copy
    - See verification status
    - View staff feedback/notes
+   - View all 12 sections of RIDS form
 
-2. **Update My RIDS** (Limited Fields)
-   - Update contact information
-   - Update residential address
-   - Update email/mobile number
-   - Upload new photo
+2. **Request RIDS Changes**
+   - Submit change request with description
+   - Staff receives notification and processes request
+   - Track status of change requests (pending, in_progress, completed, rejected)
+   - View staff responses to change requests
 
 3. **RIDS Notifications**
-   - Alert when RIDS needs update
-   - Notification when verified/rejected
+   - Alert when RIDS is approved/rejected
+   - Notification when change request is processed
    - Reminder for document renewals
    - Training completion updates
 
-**Note:** Reservist cannot create or significantly modify RIDS. Major changes require staff intervention.
+**Important:** Reservists have READ-ONLY access to RIDS. All modifications must be made by Staff/Admin through the web application. Reservists can submit change requests via the mobile app, which notify staff to make the necessary updates.
 
 ---
 
@@ -1132,32 +1133,40 @@ Send E-Copy to arescom.rmis@gmail.com
 END
 ```
 
-### **Workflow 2: RIDS Update by Reservist (Mobile)**
+### **Workflow 2: RIDS Change Request by Reservist (Mobile)**
 
 ```
 START
   ↓
 Reservist logs into mobile app
   ↓
-Navigate to "My Profile" → "Update RIDS"
+Navigate to "My RIDS" (View Only)
   ↓
-Select editable fields (Contact info, Address, Photo)
+Tap "Request Changes" button
   ↓
-Make changes
+Enter description of needed changes
+(e.g., "Need to update contact number and address...")
   ↓
-Upload new documents if needed
+Submit change request
   ↓
-Submit update request
+System creates change request record in rids_change_requests table
   ↓
-System creates update request ticket
+System sends notification to all active Staff/Admin
   ↓
-Staff receives notification
+Staff logs into web app
   ↓
-Staff reviews changes
+Views change request in "RIDS Change Requests" section
   ↓
-[Approve] → Update RIDS → Notify Reservist
+Staff updates the RIDS form directly
   ↓
-[Reject] → Send feedback → Notify Reservist
+Staff marks change request status:
+  - [In Progress] → Working on it
+  - [Completed] → Changes applied + add response message
+  - [Rejected] → Cannot be done + add reason
+  ↓
+System notifies Reservist of status update
+  ↓
+Reservist views updated RIDS and staff response
   ↓
 END
 ```

@@ -127,6 +127,12 @@ export const STAFF_NAV: NavigationItem[] = [
     description: 'Document validation',
   },
   {
+    label: 'RIDS',
+    href: '/staff/rids',
+    icon: 'FileUser',
+    description: 'Reservist Information Data Sheet (Coming Soon)',
+  },
+  {
     label: 'Training',
     href: '/staff/training',
     icon: 'GraduationCap',

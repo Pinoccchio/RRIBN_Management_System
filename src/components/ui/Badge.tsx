@@ -124,3 +124,26 @@ export function DocumentStatusBadge({ status, size = 'md' }: DocumentStatusBadge
     </Badge>
   );
 }
+
+// RIDS Status Badge Component
+interface RIDSStatusBadgeProps {
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export function RIDSStatusBadge({ status, size = 'md' }: RIDSStatusBadgeProps) {
+  const statusConfig = {
+    draft: { variant: 'default' as BadgeVariant, label: 'Draft' },
+    submitted: { variant: 'pending' as BadgeVariant, label: 'Submitted' },
+    approved: { variant: 'success' as BadgeVariant, label: 'Approved' },
+    rejected: { variant: 'error' as BadgeVariant, label: 'Rejected' },
+  };
+
+  const config = statusConfig[status];
+
+  return (
+    <Badge variant={config.variant} size={size}>
+      {config.label}
+    </Badge>
+  );
+}

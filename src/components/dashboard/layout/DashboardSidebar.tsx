@@ -21,6 +21,7 @@ import {
   Eye,
   Building2,
   BarChart3,
+  FileUser,
 } from 'lucide-react';
 
 // Icon mapping
@@ -40,6 +41,7 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Eye,
   Building2,
   BarChart3,
+  FileUser,
 };
 
 interface DashboardSidebarProps {
