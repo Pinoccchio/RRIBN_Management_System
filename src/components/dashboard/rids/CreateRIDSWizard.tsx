@@ -24,8 +24,36 @@ export function CreateRIDSWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedReservist, setSelectedReservist] = useState<Reservist | null>(null);
   const [createdRIDSId, setCreatedRIDSId] = useState<string | null>(null);
+  // Prefilled with dummy data for easy testing
   const [section2Data, setSection2Data] = useState<Section2FormData>({
-    mobile_tel_nr: '',
+    // Employment
+    present_occupation: 'Software Engineer',
+    company_name: 'Tech Solutions Inc.',
+    company_address: '123 Business Park, Makati City, Metro Manila',
+    office_tel_nr: '(02) 8123-4567',
+
+    // Residential
+    home_address_street: '456 Mabini Street, Barangay Santo Niño',
+    home_address_city: 'Quezon City',
+    home_address_province: 'Metro Manila',
+    home_address_zip: '1100',
+    res_tel_nr: '(02) 8987-6543',
+    mobile_tel_nr: '0917-123-4567',
+
+    // Personal Details
+    birth_place: 'Manila, Philippines',
+    religion: 'Roman Catholic',
+    height_cm: 170,
+    weight_kg: 70,
+    marital_status: 'Single',
+    sex: 'Male',
+
+    // Digital
+    fb_account: 'juan.delacruz',
+
+    // Additional
+    special_skills: 'Computer Programming, Leadership, First Aid',
+    languages_spoken: 'Filipino, English, Spanish',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
