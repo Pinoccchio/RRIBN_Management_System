@@ -130,7 +130,7 @@ export const STAFF_NAV: NavigationItem[] = [
     label: 'RIDS',
     href: '/staff/rids',
     icon: 'FileUser',
-    description: 'Reservist Information Data Sheet (Coming Soon)',
+    description: 'Reservist Information Data Sheet - Under Development',
   },
   {
     label: 'Training',
