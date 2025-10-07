@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import type { InsightsResponse, AIInsightsResponse, AnalyticsResponse } from '@/lib/types/analytics';
+import { sortPromotionCandidates, getRankingJustification } from '@/lib/utils/promotionSorting';
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -79,11 +80,11 @@ export async function POST(request: NextRequest) {
         needingMore: analyticsData.summary.reservistsNeedingMoreTraining,
       },
       companies: analyticsData.companyBreakdown,
-      topCandidates: analyticsData.data
-        .filter(r => r.eligibilityStatus === 'eligible')
-        .sort((a, b) => b.readinessScore - a.readinessScore)
+      topCandidates: sortPromotionCandidates(
+        analyticsData.data.filter(r => r.eligibilityStatus === 'eligible')
+      )
         .slice(0, 10)
-        .map(r => ({
+        .map((r, index) => ({
           id: r.id,
           name: `${r.firstName} ${r.lastName}`,
           rank: r.rank,
@@ -91,7 +92,11 @@ export async function POST(request: NextRequest) {
           commissionType: r.commissionType,
           readinessScore: r.readinessScore,
           trainingHours: r.totalTrainingHours,
+          trainingTypesCount: r.trainingTypesCount, // Number of distinct training types
           campDutyDays: r.campDutyDays,
+          seminarCount: r.seminarCount, // Number of seminars attended
+          yearsInService: r.yearsInService, // Years of service experience
+          rankingJustification: getRankingJustification(r, index + 1), // Pre-computed ranking explanation
         })),
       trainingGaps: {
         needingMoreTraining: analyticsData.summary.reservistsNeedingMoreTraining,
@@ -116,9 +121,13 @@ Provide a comprehensive analysis with the following structure:
    - Each insight should be actionable
 
 3. **Top Promotion Candidates** (provide top 5):
-   - Select the most qualified candidates for promotion
-   - Provide specific justification for each candidate
-   - Include their readiness score
+   - Candidates are PRE-RANKED using multi-factor scoring:
+     * Primary: Readiness score (percentage of requirements met)
+     * Tiebreakers: Training types → Camp duty days → Seminars → Years of service → Training hours → Name
+   - Use the provided 'rankingJustification' field as a foundation, but enhance with your expert analysis
+   - Explain what makes each candidate stand out and ready for increased responsibility
+   - Focus on their strengths, achievements, and potential impact in the next rank
+   - Include specific metrics that support the recommendation
 
 4. **Training Gap Analysis**:
    - Identify what types of training are most needed

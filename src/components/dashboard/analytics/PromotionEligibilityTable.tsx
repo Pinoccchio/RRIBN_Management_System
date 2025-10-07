@@ -4,6 +4,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { EligibilityBadge } from './EligibilityBadge';
 import { CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import type { PromotionEligibility } from '@/lib/types/analytics';
+import { sortPromotionCandidates } from '@/lib/utils/promotionSorting';
 
 interface PromotionEligibilityTableProps {
   data: PromotionEligibility[];
@@ -59,39 +60,42 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
     // All data is already NCO-filtered at API level
 
     // Sorting
-    filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+    if (sortField === 'readinessScore') {
+      // Use comprehensive multi-level tiebreaker logic for readiness score
+      // This ensures consistent ranking with the AI-generated Top Promotion Candidates
+      filtered = sortPromotionCandidates(filtered, sortDirection);
+    } else {
+      // Standard sorting for other fields
+      filtered.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
 
-      switch (sortField) {
-        case 'name':
-          aValue = `${a.lastName} ${a.firstName}`;
-          bValue = `${b.lastName} ${b.firstName}`;
-          break;
-        case 'rank':
-          aValue = a.rank;
-          bValue = b.rank;
-          break;
-        case 'company':
-          aValue = a.company;
-          bValue = b.company;
-          break;
-        case 'trainingHours':
-          aValue = a.totalTrainingHours;
-          bValue = b.totalTrainingHours;
-          break;
-        case 'readinessScore':
-          aValue = a.readinessScore;
-          bValue = b.readinessScore;
-          break;
-        default:
-          return 0;
-      }
+        switch (sortField) {
+          case 'name':
+            aValue = `${a.lastName} ${a.firstName}`;
+            bValue = `${b.lastName} ${b.firstName}`;
+            break;
+          case 'rank':
+            aValue = a.rank;
+            bValue = b.rank;
+            break;
+          case 'company':
+            aValue = a.company;
+            bValue = b.company;
+            break;
+          case 'trainingHours':
+            aValue = a.totalTrainingHours;
+            bValue = b.totalTrainingHours;
+            break;
+          default:
+            return 0;
+        }
 
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
 
     return filtered;
   }, [data, searchTerm, companyFilter, statusFilter, sortField, sortDirection]);
@@ -219,6 +223,7 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('readinessScore')}
+                title="Sorted by score. Ties broken by: Training Types → Camp Duty → Seminars → Experience → Hours → Name"
               >
                 <div className="flex items-center gap-1">
                   Score

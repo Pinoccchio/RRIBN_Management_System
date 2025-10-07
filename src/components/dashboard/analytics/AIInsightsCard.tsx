@@ -136,6 +136,31 @@ export const AIInsightsCard: React.FC<AIInsightsCardProps> = ({ insights, loadin
                       <p className="text-xs text-gray-500">Score</p>
                     </div>
                   </div>
+
+                  {/* Key Metrics - Visual Indicators */}
+                  <div className="flex flex-wrap gap-2 my-2">
+                    {(candidate as any).trainingTypesCount !== undefined && (
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
+                        {(candidate as any).trainingTypesCount} training type{(candidate as any).trainingTypesCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {(candidate as any).campDutyDays !== undefined && (candidate as any).campDutyDays > 0 && (
+                      <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded border border-green-200">
+                        {Math.round((candidate as any).campDutyDays * 10) / 10} camp days
+                      </span>
+                    )}
+                    {(candidate as any).seminarCount !== undefined && (candidate as any).seminarCount > 0 && (
+                      <span className="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded border border-purple-200">
+                        {(candidate as any).seminarCount} seminar{(candidate as any).seminarCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {(candidate as any).yearsInService !== undefined && (candidate as any).yearsInService > 0 && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded border border-gray-200">
+                        {(candidate as any).yearsInService} yrs service
+                      </span>
+                    )}
+                  </div>
+
                   <p className="text-sm text-gray-700 mt-2">{candidate.justification}</p>
                 </div>
               </div>
