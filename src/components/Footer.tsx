@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Container } from './ui/Container';
+import { QRCodeSVG } from 'qrcode.react';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -8,7 +9,7 @@ export const Footer: React.FC = () => {
   return (
     <footer id="about" className="bg-navy-900 text-white pt-16 pb-8">
       <Container maxWidth="xl">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* About Section */}
           <div>
             <div className="flex items-center space-x-3 mb-6">
@@ -89,6 +90,45 @@ export const Footer: React.FC = () => {
                 </span>
               </li>
             </ul>
+          </div>
+
+          {/* Mobile App Download */}
+          <div>
+            <h3 className="text-white font-semibold text-lg mb-6">Download Mobile App</h3>
+            <div className="space-y-4">
+              {/* QR Code - Hidden on mobile */}
+              <div className="hidden sm:flex justify-center lg:justify-start">
+                <div className="bg-white p-3 rounded-lg inline-block">
+                  <QRCodeSVG
+                    value="https://drive.google.com/drive/folders/1fdDIntz69NasH5y_Wlxx51gIwIs8CJe8?usp=sharing"
+                    size={120}
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+              </div>
+
+              {/* Description and Link */}
+              <div className="text-center lg:text-left">
+                <p className="text-gray-400 text-sm mb-3">
+                  Scan the QR code or click below to download the RRIBN Mobile App
+                </p>
+                <a
+                  href="https://drive.google.com/drive/folders/1fdDIntz69NasH5y_Wlxx51gIwIs8CJe8?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center space-x-2 text-yellow-500 hover:text-yellow-400 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span>Download App</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 

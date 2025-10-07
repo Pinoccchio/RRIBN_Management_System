@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -164,16 +163,6 @@ export const SignInForm: React.FC = () => {
           }
           disabled={isLoading}
         />
-
-        {/* Forgot Password */}
-        <div className="flex items-center justify-end">
-          <Link
-            href="/forgot-password"
-            className="text-sm font-medium text-yellow-600 hover:text-yellow-700 transition-colors"
-          >
-            Forgot password?
-          </Link>
-        </div>
 
         {/* Submit Button */}
         <Button
