@@ -46,10 +46,13 @@ export async function GET(request: NextRequest) {
 
     logger.info('Fetching battalion-wide roster data (admin)');
 
-    // Fetch ALL reservists across ALL companies (no company filter)
+    // Fetch ALL NCO reservists across ALL companies
+    // System Scope: Filter for NCO personnel only (4 ranks)
     const { data: reservists, error: fetchError } = await supabase
       .from('reservist_accounts_with_details')
       .select('*')
+      .eq('commission_type', 'NCO') // NCO only filter
+      .in('rank', ['Private', 'Private First Class', 'Corporal', 'Sergeant'])
       .order('company', { ascending: true })
       .order('rank', { ascending: false })
       .order('last_name', { ascending: true });

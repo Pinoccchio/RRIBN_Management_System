@@ -10,20 +10,8 @@ import type {
   PromotionRequirements,
 } from '@/lib/types/analytics';
 
-// Promotion requirements configuration
-const PROMOTION_REQUIREMENTS: PromotionRequirements = {
-  nco: {
-    minTrainingHours: 40,
-    minCampDutyDays: 30,
-    minSeminars: 2,
-    minYearsInService: 2,
-  },
-  co: {
-    requiredEducation: ["Master's", 'Doctoral'],
-    minYearsInService: 5,
-    minLeadershipHours: 20,
-  },
-};
+// Promotion requirements are now fetched from database
+// System Scope: NCO Only (Private, Private First Class, Corporal, Sergeant)
 
 export async function GET(request: NextRequest) {
   logger.separator();
@@ -66,6 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Query reservist data with training metrics
+    // System Scope: Filter for NCO personnel only
     const { data: reservistData, error: queryError } = await supabase
       .from('accounts')
       .select(
@@ -82,7 +71,8 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq('role', 'reservist')
-      .eq('status', 'active');
+      .eq('status', 'active')
+      .eq('reservist_details.commission_type', 'NCO'); // NCO only filter
 
     if (queryError) {
       logger.error('Database query error', queryError);
@@ -92,9 +82,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 5. Get training hours for each reservist
+    // 5. Get training data for each reservist (need training_name to count TYPES)
     const { data: trainingData } = await supabase.from('training_hours').select(`
         reservist_id,
+        training_name,
         training_category,
         hours_completed
       `);
@@ -114,14 +105,31 @@ export async function GET(request: NextRequest) {
       .from('educational_records')
       .select('reservist_id, degree_type');
 
-    // 9. Process data and calculate eligibility
+    // 9. Get promotion requirements from database (client's exact specifications)
+    const { data: promotionRequirements } = await supabase
+      .from('promotion_requirements')
+      .select('*')
+      .eq('is_active', true);
+
+    // Create map of requirements by rank for quick lookup
+    const requirementsByRank: Record<string, any> = {};
+    (promotionRequirements || []).forEach((req: any) => {
+      requirementsByRank[req.from_rank] = req;
+    });
+
+    // 10. Process data and calculate eligibility
     const promotionEligibility: PromotionEligibility[] = (reservistData || []).map((reservist: any) => {
       const reservistId = reservist.id;
 
-      // Calculate training hours by category
-      const trainingHours = (trainingData || [])
-        .filter((t: any) => t.reservist_id === reservistId)
-        .reduce(
+      // Count distinct training TYPES (not hours) - per client requirement
+      const reservistTrainings = (trainingData || []).filter((t: any) => t.reservist_id === reservistId);
+
+      // Get unique training names
+      const uniqueTrainingNames = new Set(reservistTrainings.map((t: any) => t.training_name));
+      const trainingTypesCount = uniqueTrainingNames.size;
+
+      // Also keep hours for display purposes
+      const trainingHours = reservistTrainings.reduce(
           (acc: any, curr: any) => {
             const hours = parseFloat(curr.hours_completed || 0);
             acc.total += hours;
@@ -190,53 +198,28 @@ export async function GET(request: NextRequest) {
         : 0;
 
       const commissionType = reservist.reservist_details.commission_type || 'NCO';
+      const currentRank = reservist.reservist_details.rank;
 
-      // Determine eligibility based on commission type
-      let meetsTrainingRequirement = false;
-      let meetsCampDutyRequirement = false;
-      let meetsSeminarRequirement = false;
-      let meetsEducationRequirement = false;
-      let meetsServiceTimeRequirement = false;
+      // Get rank-specific requirements from database
+      const requirement = requirementsByRank[currentRank] || {
+        required_training_types: 0,
+        seminars_required: 0,
+        years_in_current_rank: 0,
+        camp_duty_days: 30,
+      };
 
-      let trainingHoursNeeded = 0;
-      let campDutyDaysNeeded = 0;
-      let seminarsNeeded = 0;
+      // Determine eligibility using rank-specific requirements and training TYPES (not hours)
+      const meetsTrainingRequirement = trainingTypesCount >= requirement.required_training_types;
+      const meetsCampDutyRequirement = campDutyDays >= requirement.camp_duty_days;
+      const meetsSeminarRequirement = seminarCount >= requirement.seminars_required;
+      const meetsServiceTimeRequirement = yearsInService >= requirement.years_in_current_rank;
+      const meetsEducationRequirement = true; // Not required for NCO
 
-      if (commissionType === 'NCO') {
-        meetsTrainingRequirement =
-          trainingHours.total >= PROMOTION_REQUIREMENTS.nco.minTrainingHours;
-        meetsCampDutyRequirement =
-          campDutyDays >= PROMOTION_REQUIREMENTS.nco.minCampDutyDays;
-        meetsSeminarRequirement = seminarCount >= PROMOTION_REQUIREMENTS.nco.minSeminars;
-        meetsServiceTimeRequirement =
-          yearsInService >= PROMOTION_REQUIREMENTS.nco.minYearsInService;
-        meetsEducationRequirement = true; // Not required for NCO
-
-        trainingHoursNeeded = Math.max(
-          0,
-          PROMOTION_REQUIREMENTS.nco.minTrainingHours - trainingHours.total
-        );
-        campDutyDaysNeeded = Math.max(
-          0,
-          PROMOTION_REQUIREMENTS.nco.minCampDutyDays - campDutyDays
-        );
-        seminarsNeeded = Math.max(0, PROMOTION_REQUIREMENTS.nco.minSeminars - seminarCount);
-      } else if (commissionType === 'CO') {
-        meetsEducationRequirement =
-          highestEducation !== null &&
-          PROMOTION_REQUIREMENTS.co.requiredEducation.includes(highestEducation);
-        meetsServiceTimeRequirement =
-          yearsInService >= PROMOTION_REQUIREMENTS.co.minYearsInService;
-        meetsTrainingRequirement =
-          trainingHours.leadership >= PROMOTION_REQUIREMENTS.co.minLeadershipHours;
-        meetsCampDutyRequirement = true; // Not strictly required for CO
-        meetsSeminarRequirement = true; // Not strictly required for CO
-
-        trainingHoursNeeded = Math.max(
-          0,
-          PROMOTION_REQUIREMENTS.co.minLeadershipHours - trainingHours.leadership
-        );
-      }
+      // Calculate what's needed for promotion
+      const trainingTypesNeeded = Math.max(0, requirement.required_training_types - trainingTypesCount);
+      const campDutyDaysNeeded = Math.max(0, requirement.camp_duty_days - campDutyDays);
+      const seminarsNeeded = Math.max(0, requirement.seminars_required - seminarCount);
+      const yearsNeeded = Math.max(0, requirement.years_in_current_rank - yearsInService);
 
       // Calculate eligibility status
       const requirementsMet = [
@@ -247,7 +230,7 @@ export async function GET(request: NextRequest) {
         meetsServiceTimeRequirement,
       ].filter(Boolean).length;
 
-      const totalRequirements = commissionType === 'NCO' ? 4 : 3; // NCO has 4, CO has 3 key requirements
+      const totalRequirements = 4; // NCO has 4 core requirements (education excluded)
 
       let eligibilityStatus: EligibilityStatus;
       if (requirementsMet >= totalRequirements) {
@@ -285,36 +268,31 @@ export async function GET(request: NextRequest) {
         meetsSeminarRequirement,
         meetsEducationRequirement,
         meetsServiceTimeRequirement,
-        trainingHoursNeeded: Math.round(trainingHoursNeeded * 10) / 10,
+        trainingTypesCount, // NEW: Count of distinct training types
+        trainingTypesNeeded, // NEW: Types needed for promotion
+        trainingHoursNeeded: Math.round(trainingTypesNeeded * 10) / 10, // Legacy field for compatibility
         campDutyDaysNeeded: Math.round(campDutyDaysNeeded * 10) / 10,
         seminarsNeeded,
+        yearsNeeded: Math.round(yearsNeeded * 10) / 10,
         readinessScore,
       };
     });
 
     // 10. Calculate summary statistics
+    // System Scope: NCO only (all reservists are NCO by filter)
     const summary: AnalyticsSummary = {
       totalReservists: promotionEligibility.length,
-      ncoCount: promotionEligibility.filter((r) => r.commissionType === 'NCO').length,
+      ncoCount: promotionEligibility.length, // All are NCO in this scope
       ncoEligible: promotionEligibility.filter(
-        (r) => r.commissionType === 'NCO' && r.eligibilityStatus === 'eligible'
+        (r) => r.eligibilityStatus === 'eligible'
       ).length,
       ncoPartiallyEligible: promotionEligibility.filter(
-        (r) => r.commissionType === 'NCO' && r.eligibilityStatus === 'partially_eligible'
+        (r) => r.eligibilityStatus === 'partially_eligible'
       ).length,
       ncoNotEligible: promotionEligibility.filter(
-        (r) => r.commissionType === 'NCO' && r.eligibilityStatus === 'not_eligible'
+        (r) => r.eligibilityStatus === 'not_eligible'
       ).length,
-      coCount: promotionEligibility.filter((r) => r.commissionType === 'CO').length,
-      coEligible: promotionEligibility.filter(
-        (r) => r.commissionType === 'CO' && r.eligibilityStatus === 'eligible'
-      ).length,
-      coPartiallyEligible: promotionEligibility.filter(
-        (r) => r.commissionType === 'CO' && r.eligibilityStatus === 'partially_eligible'
-      ).length,
-      coNotEligible: promotionEligibility.filter(
-        (r) => r.commissionType === 'CO' && r.eligibilityStatus === 'not_eligible'
-      ).length,
+      // CO stats removed - system scope limited to NCO only
       averageTrainingHours:
         Math.round(
           (promotionEligibility.reduce((sum, r) => sum + r.totalTrainingHours, 0) /
@@ -374,9 +352,9 @@ export async function GET(request: NextRequest) {
       companyBreakdown,
     };
 
-    logger.success('Analytics data retrieved successfully', {
+    logger.success('Analytics data retrieved successfully (NCO only)', {
       totalReservists: summary.totalReservists,
-      eligible: summary.ncoEligible + summary.coEligible,
+      eligible: summary.ncoEligible,
     });
 
     return NextResponse.json(response);

@@ -90,7 +90,11 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('reservist_accounts_with_details')
       .select('*', { count: 'exact' })
-      .in('company', assignedCompanies); // KEY FILTER: Only assigned companies
+      .in('company', assignedCompanies) // KEY FILTER: Only assigned companies
+      .eq('commission_type', 'NCO'); // System Scope: NCO personnel only
+
+    // System Scope: Filter for NCO personnel only (4 ranks)
+    query = query.in('rank', ['Private', 'Private First Class', 'Corporal', 'Sergeant']);
 
     // Apply additional filters
     if (status !== 'all') {

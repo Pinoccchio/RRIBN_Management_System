@@ -20,7 +20,7 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
   const [searchTerm, setSearchTerm] = useState('');
   const [companyFilter, setCompanyFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [commissionTypeFilter, setCommissionTypeFilter] = useState<string>('all');
+  // Commission type filter removed - System Scope: NCO only
   const [sortField, setSortField] = useState<SortField>('readinessScore');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -55,10 +55,8 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
       filtered = filtered.filter((r) => r.eligibilityStatus === statusFilter);
     }
 
-    // Commission type filter
-    if (commissionTypeFilter !== 'all') {
-      filtered = filtered.filter((r) => r.commissionType === commissionTypeFilter);
-    }
+    // Commission type filter removed - System Scope: NCO only
+    // All data is already NCO-filtered at API level
 
     // Sorting
     filtered.sort((a, b) => {
@@ -96,7 +94,7 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
     });
 
     return filtered;
-  }, [data, searchTerm, companyFilter, statusFilter, commissionTypeFilter, sortField, sortDirection]);
+  }, [data, searchTerm, companyFilter, statusFilter, sortField, sortDirection]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -164,15 +162,7 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
             <option value="not_eligible">Not Eligible</option>
           </select>
 
-          <select
-            value={commissionTypeFilter}
-            onChange={(e) => setCommissionTypeFilter(e.target.value)}
-            className="block w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-white text-navy-900 font-medium focus:border-yellow-500 focus:ring-4 focus:ring-yellow-500/30 focus:outline-none"
-          >
-            <option value="all">All Types</option>
-            <option value="NCO">NCO</option>
-            <option value="CO">CO</option>
-          </select>
+          {/* Commission type filter removed - System Scope: NCO only */}
         </div>
       </div>
 
@@ -216,7 +206,7 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
                 onClick={() => handleSort('trainingHours')}
               >
                 <div className="flex items-center gap-1">
-                  Training Hrs
+                  Training Types
                   <SortIcon field="trainingHours" />
                 </div>
               </th>
@@ -271,7 +261,7 @@ export const PromotionEligibilityTable: React.FC<PromotionEligibilityTableProps>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{reservist.totalTrainingHours} hrs</div>
+                    <div className="text-sm text-gray-900">{reservist.trainingTypesCount} types</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{reservist.campDutyDays} days</div>

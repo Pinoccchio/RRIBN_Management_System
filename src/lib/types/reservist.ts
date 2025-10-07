@@ -6,7 +6,15 @@
  *    Values: 'pending' | 'active' | 'inactive' | 'deactivated'
  * 2. Reservist Status (reservist_details.reservist_status) - Military operational readiness
  *    Values: 'ready' | 'standby' | 'retired'
+ *
+ * ALSO IMPORTANT: Commission-related fields:
+ * 1. Commission Type (reservist_details.commission_type) - NCO vs CO classification
+ *    Values: 'NCO' | 'CO' (imported from analytics.ts)
+ * 2. Commission Source (reservist_details.source_of_commission) - How they were commissioned
+ *    Values: 'ROTC' | 'OCS' | 'PMA' | 'Direct' | 'Other'
  */
+
+import { CommissionType } from './analytics';
 
 /**
  * Military operational readiness status for reservists
@@ -27,7 +35,11 @@ export type ReservistStatus = 'ready' | 'standby' | 'retired';
  */
 export type AccountStatus = 'pending' | 'active' | 'inactive' | 'deactivated';
 
-export type CommissionType = 'ROTC' | 'OCS' | 'PMA' | 'Direct' | 'Other';
+/**
+ * Source of commission - how the reservist was commissioned
+ * Stored in: reservist_details.source_of_commission
+ */
+export type CommissionSource = 'ROTC' | 'OCS' | 'PMA' | 'Direct' | 'Other';
 
 export interface ReservistDetails {
   id: string;
@@ -35,6 +47,7 @@ export interface ReservistDetails {
   afpsn: string | null;
   rank: string | null;
   company: string | null;
+  /** NCO vs CO classification - used for filtering system scope */
   commission_type: CommissionType | null;
   date_of_birth: string | null;
   address: string | null;
@@ -43,7 +56,8 @@ export interface ReservistDetails {
   reservist_status: ReservistStatus;
   br_svc: string | null;
   mos: string | null;
-  source_of_commission: string | null;
+  /** How the reservist was commissioned (ROTC, OCS, etc.) */
+  source_of_commission: CommissionSource | null;
   initial_rank: string | null;
   date_of_commission: string | null;
   commission_authority: string | null;

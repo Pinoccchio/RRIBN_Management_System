@@ -20,6 +20,49 @@ export const UpdatePasswordForm: React.FC = () => {
   useEffect(() => {
     const supabase = createClient();
 
+    // PKCE Flow: Check for token_hash in URL and exchange it for session
+    const handleTokenExchange = async () => {
+      // Get URL parameters
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParams = new URLSearchParams(window.location.search);
+
+      // Check for token_hash in either hash or search params (PKCE flow)
+      const tokenHash = hashParams.get('token_hash') || searchParams.get('token_hash');
+      const type = hashParams.get('type') || searchParams.get('type');
+
+      if (tokenHash && type === 'recovery') {
+        logger.info('Password reset token detected in URL - exchanging for session', { type });
+
+        try {
+          // Exchange the token_hash for a session
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+
+          if (error) {
+            logger.error('Token exchange failed', error);
+            setIsRecoveryMode(false);
+            return;
+          }
+
+          if (data.session) {
+            logger.success('Token exchanged successfully - recovery mode enabled');
+            setIsRecoveryMode(true);
+
+            // Clean up URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (err) {
+          logger.error('Unexpected error during token exchange', err);
+          setIsRecoveryMode(false);
+        }
+      }
+    };
+
+    // Execute token exchange first
+    handleTokenExchange();
+
     // Listen for auth state changes
     const {
       data: { subscription },

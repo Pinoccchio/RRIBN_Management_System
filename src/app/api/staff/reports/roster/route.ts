@@ -50,11 +50,14 @@ export async function GET(request: NextRequest) {
 
     logger.info('Fetching roster data for companies', { assignedCompanies });
 
-    // Fetch all reservists in assigned companies using the optimized view
+    // Fetch all NCO reservists in assigned companies using the optimized view
+    // System Scope: Filter for NCO personnel only (4 ranks)
     const { data: reservists, error: fetchError } = await supabase
       .from('reservist_accounts_with_details')
       .select('*')
       .in('company', assignedCompanies)
+      .eq('commission_type', 'NCO') // NCO only filter
+      .in('rank', ['Private', 'Private First Class', 'Corporal', 'Sergeant'])
       .order('company', { ascending: true })
       .order('rank', { ascending: false })
       .order('last_name', { ascending: true });

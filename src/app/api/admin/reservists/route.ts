@@ -65,6 +65,10 @@ export async function GET(request: NextRequest) {
       .from('reservist_accounts_with_details')
       .select('*', { count: 'exact' });
 
+    // System Scope: Filter for NCO personnel only (4 ranks)
+    query = query.eq('commission_type', 'NCO');
+    query = query.in('rank', ['Private', 'Private First Class', 'Corporal', 'Sergeant']);
+
     // Apply filters
     if (status !== 'all') {
       query = query.eq('status', status);

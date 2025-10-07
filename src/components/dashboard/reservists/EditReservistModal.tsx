@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import type { Reservist } from '@/lib/types/reservist';
+import { NCO_RANK_OPTIONS } from '@/lib/constants/ranks';
 
 interface EditReservistModalProps {
   isOpen: boolean;
@@ -155,17 +156,9 @@ export function EditReservistModal({
                 onChange={(value) => setRank(value)}
                 options={[
                   { value: '', label: 'Select Rank' },
-                  { value: 'Private', label: 'Private' },
-                  { value: 'PFC', label: 'Private First Class' },
-                  { value: 'Corporal', label: 'Corporal' },
-                  { value: 'Sergeant', label: 'Sergeant' },
-                  { value: '2LT', label: 'Second Lieutenant' },
-                  { value: '1LT', label: 'First Lieutenant' },
-                  { value: 'Captain', label: 'Captain' },
-                  { value: 'Major', label: 'Major' },
-                  { value: 'LtCol', label: 'Lieutenant Colonel' },
-                  { value: 'Colonel', label: 'Colonel' },
+                  ...NCO_RANK_OPTIONS
                 ]}
+                helperText="System Scope: NCO ranks only (Private to Sergeant)"
               />
               <Select
                 label="Operational Status"
